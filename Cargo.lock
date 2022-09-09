@@ -7756,6 +7756,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sc-authority-permission"
+version = "4.0.0-dev"
+dependencies = [
+ "async-trait",
+ "futures",
+ "sp-authority-permission",
+ "sp-consensus-slots",
+ "tokio",
+]
+
+[[package]]
 name = "sc-basic-authorship"
 version = "0.10.0-dev"
 dependencies = [
@@ -9513,6 +9524,14 @@ dependencies = [
  "sp-application-crypto",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "sp-authority-permission"
+version = "4.0.0-dev"
+dependencies = [
+ "async-trait",
+ "sp-consensus-slots",
 ]
 
 [[package]]

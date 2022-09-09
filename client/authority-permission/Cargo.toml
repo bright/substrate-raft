@@ -1,0 +1,24 @@
+[package]
+name = "sc-authority-permission"
+version = "4.0.0-dev"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2021"
+license = "GPL-3.0-or-later WITH Classpath-exception-2.0"
+homepage = "https://substrate.io"
+repository = "https://github.com/paritytech/substrate/"
+description = "Authority permission implementations"
+documentation = "https://docs.rs/sc-authority-permission"
+readme = "README.md"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+async-trait = "0.1.57"
+futures = "0.3.21"
+sp-authority-permission = { version = "4.0.0-dev", path = "../../primitives/authority-permission" }
+sp-consensus-slots = { version = "0.10.0-dev", path = "../../primitives/consensus/slots" }
+
+
+[dev-dependencies]
+tokio = { version = "1.17.0", features = ["macros", "rt-multi-thread"] }
