@@ -27,7 +27,7 @@ use names::{Generator, Name};
 use sc_client_api::execution_extensions::ExecutionStrategies;
 use sc_service::{
 	config::{
-		BasePath, Configuration, DatabaseSource, KeystoreConfig, NetworkConfiguration,
+		BasePath, Configuration, DatabaseSource, KeystoreConfig, Multiaddr, NetworkConfiguration,
 		NodeKeyConfig, OffchainWorkerConfig, PrometheusConfig, PruningMode, Role, RpcMethods,
 		TelemetryEndpoints, TransactionPoolOptions, WasmExecutionMethod,
 	},
@@ -468,6 +468,13 @@ pub trait CliConfiguration<DCV: DefaultConfigurationValues = ()>: Sized {
 		Ok(2)
 	}
 
+	/// Returns remote authority address (None if disabled)
+	///
+	/// By default this is `None`.
+	fn remote_authority(&self) -> Result<Option<Multiaddr>> {
+		Ok(None)
+	}
+
 	/// Activate or not the automatic announcing of blocks after import
 	///
 	/// By default this is `false`.
@@ -562,6 +569,7 @@ pub trait CliConfiguration<DCV: DefaultConfigurationValues = ()>: Sized {
 			base_path: Some(base_path),
 			informant_output_format: Default::default(),
 			runtime_cache_size,
+			remote_authority: self.remote_authority()?,
 		})
 	}
 

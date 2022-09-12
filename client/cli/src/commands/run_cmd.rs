@@ -28,7 +28,7 @@ use crate::{
 use clap::Parser;
 use regex::Regex;
 use sc_service::{
-	config::{BasePath, PrometheusConfig, TransactionPoolOptions},
+	config::{BasePath, Multiaddr, PrometheusConfig, TransactionPoolOptions},
 	ChainSpec, Role,
 };
 use sc_telemetry::TelemetryEndpoints;
@@ -264,6 +264,12 @@ pub struct RunCmd {
 	/// When `--dev` is given and no explicit `--base-path`, this option is implied.
 	#[clap(long, conflicts_with = "base-path")]
 	pub tmp: bool,
+
+	/// Specify remote authority address
+	///
+	/// Ex: `/ip4/127.0.0.1/tcp/<port>`
+	#[clap(long, value_name = "ADDR")]
+	pub remote_authority: Option<Multiaddr>,
 }
 
 impl RunCmd {
@@ -392,6 +398,10 @@ impl CliConfiguration for RunCmd {
 
 	fn disable_grandpa(&self) -> Result<bool> {
 		Ok(self.no_grandpa)
+	}
+
+	fn remote_authority(&self) -> Result<Option<Multiaddr>> {
+		Ok(self.remote_authority.clone())
 	}
 
 	fn rpc_ws_max_connections(&self) -> Result<Option<usize>> {
