@@ -10,6 +10,8 @@ use sc_service::{error::Error as ServiceError, Configuration, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use std::{sync::Arc, time::Duration};
+use sc_authority_permission::OddSlotPermissionResolver;
+use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 
 // Our native executor instance.
 pub struct ExecutorDispatch;
@@ -220,6 +222,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 	let name = config.network.node_name.clone();
 	let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
+	let remote_authority = config.remote_authority.clone();
 
 	let rpc_extensions_builder = {
 		let client = client.clone();
@@ -259,6 +262,13 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 
 		let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 
+		let permission_resolver: Box<dyn PermissionResolver> = if let Some(_) = remote_authority
+		{
+			Box::new(OddSlotPermissionResolver {})
+		}else {
+			Box::new(AlwaysPermissionGranted {})
+		};
+
 		let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _, _>(
 			StartAuraParams {
 				slot_duration,
@@ -281,6 +291,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
 				can_author_with,
+				permission_resolver,
 				sync_oracle: network.clone(),
 				justification_sync_link: network.clone(),
 				block_proposal_slot_portion: SlotProportion::new(2f32 / 3f32),

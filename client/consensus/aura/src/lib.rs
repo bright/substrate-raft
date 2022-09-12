@@ -67,6 +67,7 @@ pub use import_queue::{
 	ImportQueueParams,
 };
 pub use sc_consensus_slots::SlotProportion;
+use sp_authority_permission::PermissionResolver;
 pub use sp_consensus::SyncOracle;
 pub use sp_consensus_aura::{
 	digests::CompatibleDigestItem,
@@ -133,6 +134,8 @@ pub struct StartAuraParams<C, SC, I, PF, SO, L, CIDP, BS, CAW> {
 	pub keystore: SyncCryptoStorePtr,
 	/// Can we author a block with this node?
 	pub can_author_with: CAW,
+	/// Do we have permission to author ?
+	pub permission_resolver: Box<dyn PermissionResolver>,
 	/// The proportion of the slot dedicated to proposing.
 	///
 	/// The block proposing will be limited to this proportion of the slot from the starting of the
@@ -161,6 +164,7 @@ pub fn start_aura<P, B, C, SC, I, PF, SO, L, CIDP, BS, CAW, Error>(
 		backoff_authoring_blocks,
 		keystore,
 		can_author_with,
+		permission_resolver,
 		block_proposal_slot_portion,
 		max_block_proposal_slot_portion,
 		telemetry,
@@ -183,7 +187,7 @@ where
 	CIDP::InherentDataProviders: InherentDataProviderExt + Send,
 	BS: BackoffAuthoringBlocksStrategy<NumberFor<B>> + Send + Sync + 'static,
 	CAW: CanAuthorWith<B> + Send,
-	Error: std::error::Error + Send + From<sp_consensus::Error> + 'static,
+	Error: std::error::Error + Send + From<sp_consensus::Error> + 'static
 {
 	let worker = build_aura_worker::<P, _, _, _, _, _, _, _, _>(BuildAuraWorkerParams {
 		client,
@@ -206,6 +210,7 @@ where
 		sync_oracle,
 		create_inherent_data_providers,
 		can_author_with,
+		permission_resolver
 	))
 }
 
@@ -583,6 +588,7 @@ mod tests {
 		task::Poll,
 		time::{Duration, Instant},
 	};
+	use sp_authority_permission::AlwaysPermissionGranted;
 	use substrate_test_runtime_client::{
 		runtime::{Header, H256},
 		TestClient,
@@ -761,6 +767,7 @@ mod tests {
 					),
 					keystore,
 					can_author_with: sp_consensus::AlwaysCanAuthor,
+					permission_resolver: Box::new(AlwaysPermissionGranted {}),
 					block_proposal_slot_portion: SlotProportion::new(0.5),
 					max_block_proposal_slot_portion: None,
 					telemetry: None,

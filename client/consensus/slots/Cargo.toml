@@ -24,6 +24,7 @@ sc-client-api = { version = "4.0.0-dev", path = "../../api" }
 sc-consensus = { version = "0.10.0-dev", path = "../../../client/consensus/common" }
 sc-telemetry = { version = "4.0.0-dev", path = "../../telemetry" }
 sp-arithmetic = { version = "5.0.0", path = "../../../primitives/arithmetic" }
+sp-authority-permission = { version = "4.0.0-dev", path = "../../../primitives/authority-permission"}
 sp-blockchain = { version = "4.0.0-dev", path = "../../../primitives/blockchain" }
 sp-consensus = { version = "0.10.0-dev", path = "../../../primitives/consensus/common" }
 sp-consensus-slots = { version = "0.10.0-dev", path = "../../../primitives/consensus/slots" }
