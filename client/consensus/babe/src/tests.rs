@@ -45,6 +45,7 @@ use sp_runtime::{
 };
 use sp_timestamp::InherentDataProvider as TimestampInherentDataProvider;
 use std::{cell::RefCell, task::Poll, time::Duration};
+use sp_authority_permission::AlwaysPermissionGranted;
 
 type Item = DigestItem;
 
@@ -448,6 +449,7 @@ fn run_one_test(mutator: impl Fn(&mut TestHeader, Stage) + Send + Sync + 'static
 				babe_link: data.link.clone(),
 				keystore,
 				can_author_with: sp_consensus::AlwaysCanAuthor,
+				permission_resolver: Box::new(AlwaysPermissionGranted {}),
 				justification_sync_link: (),
 				block_proposal_slot_portion: SlotProportion::new(0.5),
 				max_block_proposal_slot_portion: None,

@@ -21,3 +21,12 @@ use sp_consensus_slots::Slot;
 pub trait PermissionResolver: Send + Sync {
 	async fn resolve(&self, slot: Slot) -> bool;
 }
+
+pub struct AlwaysPermissionGranted {}
+
+#[async_trait]
+impl PermissionResolver for AlwaysPermissionGranted {
+	async fn resolve(&self, _: Slot) -> bool {
+		true
+	}
+}

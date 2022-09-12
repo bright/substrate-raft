@@ -47,6 +47,7 @@ use sp_runtime::{
 };
 use sp_timestamp::Timestamp;
 use std::{fmt::Debug, ops::Deref, time::Duration};
+use sp_authority_permission::PermissionResolver;
 
 /// The changes that need to applied to the storage to create the state for a block.
 ///
@@ -493,6 +494,7 @@ pub async fn start_slot_worker<B, C, W, SO, CIDP, CAW, Proof>(
 	sync_oracle: SO,
 	create_inherent_data_providers: CIDP,
 	can_author_with: CAW,
+	permission_resolver: Box<dyn PermissionResolver>
 ) where
 	B: BlockT,
 	C: SelectChain<B>,
@@ -515,6 +517,11 @@ pub async fn start_slot_worker<B, C, W, SO, CIDP, CAW, Proof>(
 
 		if sync_oracle.is_major_syncing() {
 			debug!(target: "slots", "Skipping proposal slot due to sync.");
+			continue
+		}
+
+		if !permission_resolver.resolve(slot_info.slot).await {
+			debug!(target: "slots", "Skipping proposal slot due to lack of permission.");
 			continue
 		}
 

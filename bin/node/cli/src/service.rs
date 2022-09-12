@@ -37,6 +37,8 @@ use sp_api::ProvideRuntimeApi;
 use sp_core::crypto::Pair;
 use sp_runtime::{generic, traits::Block as BlockT, SaturatedConversion};
 use std::sync::Arc;
+use sc_authority_permission::OddSlotPermissionResolver;
+use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 
 /// The full client type definition.
 pub type FullClient =
@@ -382,6 +384,7 @@ pub fn new_full_base(
 	let name = config.network.node_name.clone();
 	let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
+	let remote_authority = config.remote_authority.clone();
 
 	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		config,
@@ -425,6 +428,12 @@ pub fn new_full_base(
 		let can_author_with =
 			sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 
+		let permission_resolver: Box<dyn PermissionResolver> = if let Some(_) = remote_authority {
+			Box::new(OddSlotPermissionResolver {})
+		}else {
+			Box::new(AlwaysPermissionGranted {})
+		};
+
 		let client_clone = client.clone();
 		let slot_duration = babe_link.config().slot_duration();
 		let babe_config = sc_consensus_babe::BabeParams {
@@ -464,6 +473,7 @@ pub fn new_full_base(
 			backoff_authoring_blocks,
 			babe_link,
 			can_author_with,
+			permission_resolver,
 			block_proposal_slot_portion: SlotProportion::new(0.5),
 			max_block_proposal_slot_portion: None,
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
