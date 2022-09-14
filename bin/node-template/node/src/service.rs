@@ -10,7 +10,7 @@ use sc_service::{error::Error as ServiceError, Configuration, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use std::{sync::Arc, time::Duration};
-use sc_authority_permission::OddSlotPermissionResolver;
+use sc_authority_permission::RemoteAuthorityPermissionResolver;
 use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 
 // Our native executor instance.
@@ -262,9 +262,9 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 
 		let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 
-		let permission_resolver: Box<dyn PermissionResolver> = if let Some(_) = remote_authority
+		let permission_resolver: Box<dyn PermissionResolver> = if let Some(address) = remote_authority
 		{
-			Box::new(OddSlotPermissionResolver {})
+			Box::new(RemoteAuthorityPermissionResolver::new(&address))
 		}else {
 			Box::new(AlwaysPermissionGranted {})
 		};

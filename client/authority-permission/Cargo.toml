@@ -15,9 +15,11 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 async-trait = "0.1.57"
+log = { version = "0.4.17", default-features = false }
 sp-authority-permission = { version = "4.0.0-dev", path = "../../primitives/authority-permission" }
 sp-consensus-slots = { version = "0.10.0-dev", path = "../../primitives/consensus/slots" }
-
+reqwest = "0.11.11"
 
 [dev-dependencies]
 tokio = { version = "1.17.0", features = ["macros", "rt-multi-thread"] }
+httpmock = { version = "0.6" }

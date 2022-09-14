@@ -37,7 +37,7 @@ use sp_api::ProvideRuntimeApi;
 use sp_core::crypto::Pair;
 use sp_runtime::{generic, traits::Block as BlockT, SaturatedConversion};
 use std::sync::Arc;
-use sc_authority_permission::OddSlotPermissionResolver;
+use sc_authority_permission::RemoteAuthorityPermissionResolver;
 use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 
 /// The full client type definition.
@@ -428,8 +428,8 @@ pub fn new_full_base(
 		let can_author_with =
 			sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 
-		let permission_resolver: Box<dyn PermissionResolver> = if let Some(_) = remote_authority {
-			Box::new(OddSlotPermissionResolver {})
+		let permission_resolver: Box<dyn PermissionResolver> = if let Some(address) = remote_authority {
+			Box::new(RemoteAuthorityPermissionResolver::new(&address))
 		}else {
 			Box::new(AlwaysPermissionGranted {})
 		};
