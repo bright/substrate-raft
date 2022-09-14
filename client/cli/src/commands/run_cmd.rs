@@ -28,7 +28,7 @@ use crate::{
 use clap::Parser;
 use regex::Regex;
 use sc_service::{
-	config::{BasePath, Multiaddr, PrometheusConfig, TransactionPoolOptions},
+	config::{BasePath, PrometheusConfig, TransactionPoolOptions},
 	ChainSpec, Role,
 };
 use sc_telemetry::TelemetryEndpoints;
@@ -267,9 +267,9 @@ pub struct RunCmd {
 
 	/// Specify remote authority address
 	///
-	/// Ex: `/ip4/127.0.0.1/tcp/<port>`
+	/// Ex: `http://localhost:8080`
 	#[clap(long, value_name = "ADDR")]
-	pub remote_authority: Option<Multiaddr>,
+	pub remote_authority: Option<String>,
 }
 
 impl RunCmd {
@@ -400,7 +400,7 @@ impl CliConfiguration for RunCmd {
 		Ok(self.no_grandpa)
 	}
 
-	fn remote_authority(&self) -> Result<Option<Multiaddr>> {
+	fn remote_authority(&self) -> Result<Option<String>> {
 		Ok(self.remote_authority.clone())
 	}
 

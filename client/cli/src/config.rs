@@ -27,7 +27,7 @@ use names::{Generator, Name};
 use sc_client_api::execution_extensions::ExecutionStrategies;
 use sc_service::{
 	config::{
-		BasePath, Configuration, DatabaseSource, KeystoreConfig, Multiaddr, NetworkConfiguration,
+		BasePath, Configuration, DatabaseSource, KeystoreConfig, NetworkConfiguration,
 		NodeKeyConfig, OffchainWorkerConfig, PrometheusConfig, PruningMode, Role, RpcMethods,
 		TelemetryEndpoints, TransactionPoolOptions, WasmExecutionMethod,
 	},
@@ -471,7 +471,7 @@ pub trait CliConfiguration<DCV: DefaultConfigurationValues = ()>: Sized {
 	/// Returns remote authority address (None if disabled)
 	///
 	/// By default this is `None`.
-	fn remote_authority(&self) -> Result<Option<Multiaddr>> {
+	fn remote_authority(&self) -> Result<Option<String>> {
 		Ok(None)
 	}
 

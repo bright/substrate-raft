@@ -153,7 +153,7 @@ pub struct Configuration {
 	/// Maximum number of different runtime versions that can be cached.
 	pub runtime_cache_size: u8,
 	/// Remote authority address.
-	pub remote_authority: Option<Multiaddr>,
+	pub remote_authority: Option<String>,
 }
 
 /// Type for tasks spawned by the executor.
