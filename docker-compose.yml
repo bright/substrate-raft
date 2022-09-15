@@ -1,0 +1,70 @@
+version: "3.7"
+services:
+
+  authority-service:
+    build:
+      context: .
+      dockerfile: ./bin/authority-service/docker/authority-service.Dockerfile
+
+  validator-alice-1:
+    build:
+      context: .
+      dockerfile: ./docker/substrate_builder.Dockerfile
+    ports:
+      - "9944:9944"
+      - "9615:9615"
+    command:
+      - "substrate"
+      - "--node-key"
+      - "0000000000000000000000000000000000000000000000000000000000000001"
+      - "--base-path"
+      - "/tmp/alice-1"
+      - "--chain=local"
+      - "--port"
+      - "30333"
+      - "--validator"
+      - "--alice"
+      - "--bootnodes"
+      - "/dns/validator-bob/tcp/30333/p2p/12D3KooWHdiAxVd8uMQR1hGWXccidmfCwLqcMpGwR6QcTP6QRMuD"
+      - "--remote-authority"
+      - "http://authority-service:8000"
+      - "--unsafe-ws-external"
+      - "--unsafe-rpc-external"
+
+  validator-alice-2:
+    build:
+      context: .
+      dockerfile: ./docker/substrate_builder.Dockerfile
+    command:
+      - "substrate"
+      - "--base-path"
+      - "/tmp/alice-2"
+      - "--chain=local"
+      - "--port"
+      - "30333"
+      - "--validator"
+      - "--alice"
+      - "--bootnodes"
+      - "/dns/validator-bob/tcp/30333/p2p/12D3KooWHdiAxVd8uMQR1hGWXccidmfCwLqcMpGwR6QcTP6QRMuD"
+      - "--remote-authority"
+      - "http://authority-service:8000"
+
+  validator-bob:
+    image: parity/substrate
+    build:
+      context: .
+      dockerfile: ./docker/substrate_builder.Dockerfile
+    command:
+      - "substrate"
+      - "--node-key"
+      - "0000000000000000000000000000000000000000000000000000000000000002"
+      - "--base-path"
+      - "/tmp/bob"
+      - "--chain=local"
+      - "--port"
+      - "30333"
+      - "--validator"
+      - "--bob"
+      - "--bootnodes"
+      - "/dns/validator-alice-1/tcp/30333/p2p/12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp"
+      - "--no-telemetry"
