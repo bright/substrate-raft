@@ -17,14 +17,27 @@ pub fn authorize_fix_order(
 	Result::Ok(false.to_string())
 }
 
-#[put("/authorize/<slot_nr>")]
-pub fn authorize(
-	slot_nr: usize,
+#[put("/authorize/slot/<slot_nr>")]
+pub fn authorize_slot(
+	slot_nr: i64,
 	data: &State<Arc<Mutex<authority::AuthorityData>>>,
 ) -> Result<String, Status> {
 	let mut data = data.lock().unwrap();
 	if data.current_slot < slot_nr {
 		data.current_slot = slot_nr;
+		return Result::Ok(true.to_string())
+	}
+	Result::Ok(false.to_string())
+}
+
+#[put("/authorize/round/<round_nr>")]
+pub fn authorize_round(
+	round_nr: i64,
+	data: &State<Arc<Mutex<authority::AuthorityData>>>,
+) -> Result<String, Status> {
+	let mut data = data.lock().unwrap();
+	if data.current_round < round_nr {
+		data.current_round = round_nr;
 		return Result::Ok(true.to_string())
 	}
 	Result::Ok(false.to_string())
@@ -42,18 +55,18 @@ mod test {
 
 		let rocket = rocket::build()
 			.manage(Arc::new(Mutex::new(authority::AuthorityData::new())))
-			.mount("/", routes![authorize]);
+			.mount("/", routes![authorize_slot]);
 
 		let client = Client::tracked(rocket).unwrap();
-		let response = client.put("/authorize/1").dispatch();
+		let response = client.put("/authorize/slot/1").dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		assert_eq!(response.into_string(), Some("true".into()));
 
-		let response = client.put("/authorize/1").dispatch();
+		let response = client.put("/authorize/slot/1").dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		assert_eq!(response.into_string(), Some("false".into()));
 
-		let response = client.put("/authorize/2").dispatch();
+		let response = client.put("/authorize/slot/2").dispatch();
 		assert_eq!(response.status(), Status::Ok);
 		assert_eq!(response.into_string(), Some("true".into()));
 	}

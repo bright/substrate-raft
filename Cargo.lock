@@ -8702,6 +8702,7 @@ dependencies = [
  "sp-api",
  "sp-application-crypto",
  "sp-arithmetic",
+ "sp-authority-permission",
  "sp-blockchain",
  "sp-consensus",
  "sp-core",

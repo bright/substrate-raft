@@ -1,6 +1,7 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
 use node_template_runtime::{self, opaque::Block, RuntimeApi};
+use sc_authority_permission::RemoteAuthorityPermissionResolver;
 use sc_client_api::{BlockBackend, ExecutorProvider};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 pub use sc_executor::NativeElseWasmExecutor;
@@ -8,10 +9,9 @@ use sc_finality_grandpa::SharedVoterState;
 use sc_keystore::LocalKeystore;
 use sc_service::{error::Error as ServiceError, Configuration, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryWorker};
+use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use std::{sync::Arc, time::Duration};
-use sc_authority_permission::RemoteAuthorityPermissionResolver;
-use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 
 // Our native executor instance.
 pub struct ExecutorDispatch;
@@ -248,6 +248,12 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 		telemetry: telemetry.as_mut(),
 	})?;
 
+	let permission_resolver: Arc<dyn PermissionResolver> = if let Some(address) = remote_authority {
+		Arc::new(RemoteAuthorityPermissionResolver::new(&address))
+	} else {
+		Arc::new(AlwaysPermissionGranted {})
+	};
+
 	if role.is_authority() {
 		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
 			task_manager.spawn_handle(),
@@ -261,13 +267,6 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 			sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 
 		let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
-
-		let permission_resolver: Box<dyn PermissionResolver> = if let Some(address) = remote_authority
-		{
-			Box::new(RemoteAuthorityPermissionResolver::new(&address))
-		}else {
-			Box::new(AlwaysPermissionGranted {})
-		};
 
 		let aura = sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _, _>(
 			StartAuraParams {
@@ -291,7 +290,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
 				can_author_with,
-				permission_resolver,
+				permission_resolver: permission_resolver.clone(),
 				sync_oracle: network.clone(),
 				justification_sync_link: network.clone(),
 				block_proposal_slot_portion: SlotProportion::new(2f32 / 3f32),
@@ -339,6 +338,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 			prometheus_registry,
 			shared_voter_state: SharedVoterState::empty(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
+			permission_resolver,
 		};
 
 		// the GRANDPA voter task is considered infallible, i.e.

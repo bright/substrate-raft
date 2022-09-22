@@ -23,5 +23,5 @@ fn rocket() -> _ {
 
 	rocket::build()
 		.manage(Arc::new(Mutex::new(data)))
-		.mount("/", routes![handler::authorize, handler::authorize_fix_order])
+		.mount("/", routes![handler::authorize_slot, handler::authorize_round, handler::authorize_fix_order])
 }
