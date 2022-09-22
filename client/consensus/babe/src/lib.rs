@@ -411,7 +411,7 @@ pub struct BabeParams<B: BlockT, C, SC, E, I, SO, L, CIDP, BS, CAW> {
 	pub can_author_with: CAW,
 
 	/// Resolves authority permission
-	pub permission_resolver: Box<dyn PermissionResolver>,
+	pub permission_resolver: Arc<dyn PermissionResolver>,
 
 	/// The proportion of the slot dedicated to proposing.
 	///

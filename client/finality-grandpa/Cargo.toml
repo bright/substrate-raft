@@ -42,6 +42,7 @@ sc-utils = { version = "4.0.0-dev", path = "../utils" }
 sp-api = { version = "4.0.0-dev", path = "../../primitives/api" }
 sp-application-crypto = { version = "6.0.0", path = "../../primitives/application-crypto" }
 sp-arithmetic = { version = "5.0.0", path = "../../primitives/arithmetic" }
+sp-authority-permission = { version = "4.0.0-dev", path = "../../primitives/authority-permission"}
 sp-blockchain = { version = "4.0.0-dev", path = "../../primitives/blockchain" }
 sp-consensus = { version = "0.10.0-dev", path = "../../primitives/consensus/common" }
 sp-core = { version = "6.0.0", path = "../../primitives/core" }
