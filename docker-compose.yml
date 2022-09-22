@@ -7,9 +7,7 @@ services:
       dockerfile: ./bin/authority-service/docker/authority-service.Dockerfile
 
   validator-alice-1:
-    build:
-      context: .
-      dockerfile: ./docker/substrate_builder.Dockerfile
+    image: parity/substrate
     ports:
       - "9944:9944"
       - "9615:9615"
@@ -30,11 +28,10 @@ services:
       - "http://authority-service:8000"
       - "--unsafe-ws-external"
       - "--unsafe-rpc-external"
+      - "-lafg=debug"
 
   validator-alice-2:
-    build:
-      context: .
-      dockerfile: ./docker/substrate_builder.Dockerfile
+    image: parity/substrate
     command:
       - "substrate"
       - "--base-path"
@@ -48,12 +45,10 @@ services:
       - "/dns/validator-bob/tcp/30333/p2p/12D3KooWHdiAxVd8uMQR1hGWXccidmfCwLqcMpGwR6QcTP6QRMuD"
       - "--remote-authority"
       - "http://authority-service:8000"
+      - "-lafg=debug"
 
   validator-bob:
     image: parity/substrate
-    build:
-      context: .
-      dockerfile: ./docker/substrate_builder.Dockerfile
     command:
       - "substrate"
       - "--node-key"
@@ -68,3 +63,58 @@ services:
       - "--bootnodes"
       - "/dns/validator-alice-1/tcp/30333/p2p/12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp"
       - "--no-telemetry"
+      - "-lafg=debug"
+
+  validator-eve:
+    image: parity/substrate
+    command:
+      - "substrate"
+      - "--node-key"
+      - "0000000000000000000000000000000000000000000000000000000000000003"
+      - "--base-path"
+      - "/tmp/eve"
+      - "--chain=local"
+      - "--port"
+      - "30333"
+      - "--validator"
+      - "--eve"
+      - "--bootnodes"
+      - "/dns/validator-alice-1/tcp/30333/p2p/12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp"
+      - "--no-telemetry"
+      - "-lafg=debug"
+
+  validator-dave:
+    image: parity/substrate
+    command:
+      - "substrate"
+      - "--node-key"
+      - "0000000000000000000000000000000000000000000000000000000000000004"
+      - "--base-path"
+      - "/tmp/dave"
+      - "--chain=local"
+      - "--port"
+      - "30333"
+      - "--validator"
+      - "--dave"
+      - "--bootnodes"
+      - "/dns/validator-alice-1/tcp/30333/p2p/12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp"
+      - "--no-telemetry"
+      - "-lafg=debug"
+
+  validator-charlie:
+    image: parity/substrate
+    command:
+      - "substrate"
+      - "--node-key"
+      - "0000000000000000000000000000000000000000000000000000000000000005"
+      - "--base-path"
+      - "/tmp/charlie"
+      - "--chain=local"
+      - "--port"
+      - "30333"
+      - "--validator"
+      - "--charlie"
+      - "--bootnodes"
+      - "/dns/validator-alice-1/tcp/30333/p2p/12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp"
+      - "--no-telemetry"
+      - "-lafg=debug"

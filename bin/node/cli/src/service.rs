@@ -26,6 +26,7 @@ use futures::prelude::*;
 use kitchensink_runtime::RuntimeApi;
 use node_executor::ExecutorDispatch;
 use node_primitives::Block;
+use sc_authority_permission::RemoteAuthorityPermissionResolver;
 use sc_client_api::{BlockBackend, ExecutorProvider};
 use sc_consensus_babe::{self, SlotProportion};
 use sc_executor::NativeElseWasmExecutor;
@@ -34,11 +35,10 @@ use sc_network_common::{protocol::event::Event, service::NetworkEventStream};
 use sc_service::{config::Configuration, error::Error as ServiceError, RpcHandlers, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_api::ProvideRuntimeApi;
+use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 use sp_core::crypto::Pair;
 use sp_runtime::{generic, traits::Block as BlockT, SaturatedConversion};
 use std::sync::Arc;
-use sc_authority_permission::RemoteAuthorityPermissionResolver;
-use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 
 /// The full client type definition.
 pub type FullClient =
@@ -416,6 +416,12 @@ pub fn new_full_base(
 
 	(with_startup_data)(&block_import, &babe_link);
 
+	let permission_resolver: Arc<dyn PermissionResolver> = if let Some(address) = remote_authority {
+		Arc::new(RemoteAuthorityPermissionResolver::new(&address))
+	} else {
+		Arc::new(AlwaysPermissionGranted {})
+	};
+
 	if let sc_service::config::Role::Authority { .. } = &role {
 		let proposer = sc_basic_authorship::ProposerFactory::new(
 			task_manager.spawn_handle(),
@@ -427,12 +433,6 @@ pub fn new_full_base(
 
 		let can_author_with =
 			sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
-
-		let permission_resolver: Box<dyn PermissionResolver> = if let Some(address) = remote_authority {
-			Box::new(RemoteAuthorityPermissionResolver::new(&address))
-		}else {
-			Box::new(AlwaysPermissionGranted {})
-		};
 
 		let client_clone = client.clone();
 		let slot_duration = babe_link.config().slot_duration();
@@ -473,7 +473,7 @@ pub fn new_full_base(
 			backoff_authoring_blocks,
 			babe_link,
 			can_author_with,
-			permission_resolver,
+			permission_resolver: permission_resolver.clone(),
 			block_proposal_slot_portion: SlotProportion::new(0.5),
 			max_block_proposal_slot_portion: None,
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
@@ -550,6 +550,7 @@ pub fn new_full_base(
 			voting_rule: grandpa::VotingRulesBuilder::default().build(),
 			prometheus_registry,
 			shared_voter_state,
+			permission_resolver,
 		};
 
 		// the GRANDPA voter task is considered infallible, i.e.

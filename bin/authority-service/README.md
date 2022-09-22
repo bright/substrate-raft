@@ -1,6 +1,7 @@
 # Authority Service
-This is a microservice for substrate nodes, which handle authorization process. Nodes using the API can request service to get information if they are authorized or not. API provides two simple requests:
+This is a microservice for substrate nodes, which handle authorization process. Nodes using the API can request service to get information if they are authorized or not. API provides following simple requests:
 * slot number authorization:
+* round number authorization
 * node name authorization:
 
 ## Build
@@ -20,12 +21,14 @@ docker run -d -p 8000:8000 authority_app
 ```
 
 ## Slot number authorization
-Substrate node which provide higher slot number, will be authorized.
+Substrate node which provide higher slot/round number, will be authorized.
 
 Request:
 ```
-curl -X PUT 'http://127.0.0.1:8000//authorize/<slot_number>'
+curl -X PUT 'http://127.0.0.1:8000/authorize/slot/<slot_number>'
 ```
+
+`curl -X PUT 'http://127.0.0.1:8000/authorize/round/<round_number>'`
 
 Authorized response:
 ```
