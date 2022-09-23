@@ -54,6 +54,7 @@ use threadpool::ThreadPool;
 mod api;
 
 pub use api::Db as OffchainDb;
+pub use sp_authority_permission::PermissionResolver;
 pub use sp_offchain::{OffchainWorkerApi, STORAGE_PREFIX};
 
 const LOG_TARGET: &str = "offchain-worker";
@@ -70,6 +71,9 @@ pub struct OffchainWorkerOptions {
 	///
 	/// If not enabled, any http request will panic.
 	pub enable_http_requests: bool,
+
+	/// URL of remote authority.
+	pub remote_authority: Option<Arc<dyn PermissionResolver>>,
 }
 
 /// An offchain workers manager.
@@ -78,13 +82,16 @@ pub struct OffchainWorkers<Client, Block: traits::Block> {
 	_block: PhantomData<Block>,
 	thread_pool: Mutex<ThreadPool>,
 	shared_http_client: api::SharedClient,
-	enable_http: bool,
+	options: OffchainWorkerOptions,
 }
 
 impl<Client, Block: traits::Block> OffchainWorkers<Client, Block> {
 	/// Creates new [`OffchainWorkers`].
 	pub fn new(client: Arc<Client>) -> Self {
-		Self::new_with_options(client, OffchainWorkerOptions { enable_http_requests: true })
+		Self::new_with_options(
+			client,
+			OffchainWorkerOptions { enable_http_requests: true, remote_authority: None },
+		)
 	}
 
 	/// Creates new [`OffchainWorkers`] using the given `options`.
@@ -97,7 +104,7 @@ impl<Client, Block: traits::Block> OffchainWorkers<Client, Block> {
 				num_cpus::get(),
 			)),
 			shared_http_client: api::SharedClient::new(),
-			enable_http: options.enable_http_requests,
+			options,
 		}
 	}
 }
@@ -147,16 +154,21 @@ where
 			at,
 			version
 		);
+
 		let process = (version > 0).then(|| {
-			let (api, runner) =
-				api::AsyncApi::new(network_provider, is_validator, self.shared_http_client.clone());
+			let (api, runner) = api::AsyncApi::new(
+				network_provider,
+				is_validator,
+				self.options.remote_authority.clone(),
+				self.shared_http_client.clone(),
+			);
 			tracing::debug!(target: LOG_TARGET, "Spawning offchain workers at {:?}", at);
 			let header = header.clone();
 			let client = self.client.clone();
 
 			let mut capabilities = offchain::Capabilities::all();
 
-			capabilities.set(offchain::Capabilities::HTTP, self.enable_http);
+			capabilities.set(offchain::Capabilities::HTTP, self.options.enable_http_requests);
 			self.spawn_worker(move || {
 				let runtime = client.runtime_api();
 				let api = Box::new(api);

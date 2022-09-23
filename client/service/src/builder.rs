@@ -59,6 +59,7 @@ use sc_telemetry::{telemetry, ConnectionMessage, Telemetry, TelemetryHandle, SUB
 use sc_transaction_pool_api::MaintainedTransactionPool;
 use sc_utils::mpsc::{tracing_unbounded, TracingUnboundedSender};
 use sp_api::{CallApiAt, ProvideRuntimeApi};
+use sp_authority_permission::PermissionResolver;
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_consensus::block_validation::{
 	BlockAnnounceValidator, Chain, DefaultBlockAnnounceValidator,
@@ -377,13 +378,23 @@ pub fn build_offchain_workers<TBl, TCl>(
 	spawn_handle: SpawnTaskHandle,
 	client: Arc<TCl>,
 	network: Arc<dyn sc_offchain::NetworkProvider + Send + Sync>,
+	permission_resolver: Arc<dyn PermissionResolver>,
 ) -> Option<Arc<sc_offchain::OffchainWorkers<TCl, TBl>>>
 where
 	TBl: BlockT,
 	TCl: Send + Sync + ProvideRuntimeApi<TBl> + BlockchainEvents<TBl> + 'static,
 	<TCl as ProvideRuntimeApi<TBl>>::Api: sc_offchain::OffchainWorkerApi<TBl>,
 {
-	let offchain_workers = Some(Arc::new(sc_offchain::OffchainWorkers::new(client.clone())));
+	let offchain_workers = Some(Arc::new(sc_offchain::OffchainWorkers::new_with_options(
+		client.clone(),
+		sc_offchain::OffchainWorkerOptions {
+			enable_http_requests: false,
+			remote_authority: match &config.remote_authority {
+				Some(_url) => Some(permission_resolver.clone()),
+				_ => None,
+			},
+		},
+	)));
 
 	// Inform the offchain worker about new imported blocks
 	if let Some(offchain) = offchain_workers.clone() {

@@ -24,8 +24,12 @@ impl RemoteAuthorityPermissionResolver {
 			.send()
 			.await
 			.map_err(|_| "Could not reach out to remote service")?;
-		let can: bool =
-			resp.text().await.expect("").parse().map_err(|_| "Could not parse response")?;
+		let can: bool = resp
+			.text()
+			.await
+			.expect("Failed to parse response")
+			.parse()
+			.map_err(|_| "Could not parse response")?;
 		debug!(target: "permission-resolver", "Got slot {} permission: {}", slot, can);
 		Ok(can)
 	}
@@ -39,9 +43,30 @@ impl RemoteAuthorityPermissionResolver {
 			.send()
 			.await
 			.map_err(|_| "Could not reach out to remote service")?;
-		let can: bool =
-			resp.text().await.expect("").parse().map_err(|_| "Could not parse response")?;
+		let can: bool = resp
+			.text()
+			.await
+			.expect("Failed to parse response")
+			.parse()
+			.map_err(|_| "Could not parse response")?;
 		debug!(target: "permission-resolver", "Got round {} permission: {}", round, can);
+		Ok(can)
+	}
+
+	async fn do_resolve_session(&self, session_index: u32) -> Result<bool, String> {
+		let url = format!("{}/authorize/session/{}", self.base_url, session_index);
+		let resp = self
+			.client
+			.put(url)
+			.send()
+			.await
+			.map_err(|_| "Could not reach out to remote service")?;
+		let can: bool = resp
+			.text()
+			.await
+			.expect("Failed to parse response")
+			.parse()
+			.map_err(|_| "Could not parse response")?;
 		Ok(can)
 	}
 }
@@ -67,6 +92,18 @@ impl PermissionResolver for RemoteAuthorityPermissionResolver {
 				error!(
 					target: "permission-resolver",
 					"Could not resolve permission, reason: {}", e);
+				false
+			},
+		}
+	}
+
+	async fn resolve_session(&self, session_index: u32) -> bool {
+		match self.do_resolve_session(session_index).await {
+			Ok(result) => result,
+			Err(e) => {
+				error!(
+                    target: "permission-resolver",
+                    "Could not resolve permission, reason: {}", e);
 				false
 			},
 		}
@@ -130,6 +167,34 @@ mod tests {
 		});
 		let permission_resolver = RemoteAuthorityPermissionResolver::new(&server.base_url());
 		let permission = permission_resolver.resolve_round(1).await;
+
+		mock.assert();
+		assert!(!permission)
+	}
+
+	#[tokio::test]
+	async fn test_remote_permits_session() {
+		let server = MockServer::start();
+		let mock = server.mock(|when, then| {
+			when.path("/authorize/session/1");
+			then.status(200).body("true");
+		});
+		let permission_resolver = RemoteAuthorityPermissionResolver::new(&server.base_url());
+		let permission = permission_resolver.resolve_session(1).await;
+
+		mock.assert();
+		assert!(permission)
+	}
+
+	#[tokio::test]
+	async fn test_remote_denies_session() {
+		let server = MockServer::start();
+		let mock = server.mock(|when, then| {
+			when.path("/authorize/session/1");
+			then.status(200).body("false");
+		});
+		let permission_resolver = RemoteAuthorityPermissionResolver::new(&server.base_url());
+		let permission = permission_resolver.resolve_session(1).await;
 
 		mock.assert();
 		assert!(!permission)

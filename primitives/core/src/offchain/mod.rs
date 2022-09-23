@@ -299,6 +299,9 @@ pub trait Externalities: Send {
 	/// and that the validator is registered in the chain.
 	fn is_validator(&self) -> bool;
 
+	/// Returns if the local node is a leader validator.
+	fn has_session_permission(&self, session_index: u32) -> bool;
+
 	/// Returns information about the local node's network state.
 	fn network_state(&self) -> Result<OpaqueNetworkState, ()>;
 
@@ -439,6 +442,10 @@ impl<T: Externalities + ?Sized> Externalities for Box<T> {
 		(&**self).is_validator()
 	}
 
+	fn has_session_permission(&self, session_index: u32) -> bool {
+		(&**self).has_session_permission(session_index)
+	}
+
 	fn network_state(&self) -> Result<OpaqueNetworkState, ()> {
 		(&**self).network_state()
 	}
@@ -534,6 +541,11 @@ impl<T: Externalities> Externalities for LimitedExternalities<T> {
 	fn is_validator(&self) -> bool {
 		self.check(Capabilities::KEYSTORE, "is_validator");
 		self.externalities.is_validator()
+	}
+
+	fn has_session_permission(&self, session_index: u32) -> bool {
+		self.check(Capabilities::KEYSTORE, "is_leader");
+		self.externalities.has_session_permission(session_index)
 	}
 
 	fn network_state(&self) -> Result<OpaqueNetworkState, ()> {

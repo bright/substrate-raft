@@ -207,12 +207,20 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 			warp_sync: Some(warp_sync),
 		})?;
 
+	let permission_resolver: Arc<dyn PermissionResolver> =
+		if let Some(address) = config.remote_authority.clone() {
+			Arc::new(RemoteAuthorityPermissionResolver::new(&address))
+		} else {
+			Arc::new(AlwaysPermissionGranted {})
+		};
+
 	if config.offchain_worker.enabled {
 		sc_service::build_offchain_workers(
 			&config,
 			task_manager.spawn_handle(),
 			client.clone(),
 			network.clone(),
+			permission_resolver.clone(),
 		);
 	}
 
@@ -222,7 +230,6 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 	let name = config.network.node_name.clone();
 	let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
-	let remote_authority = config.remote_authority.clone();
 
 	let rpc_extensions_builder = {
 		let client = client.clone();
@@ -247,12 +254,6 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 		config,
 		telemetry: telemetry.as_mut(),
 	})?;
-
-	let permission_resolver: Arc<dyn PermissionResolver> = if let Some(address) = remote_authority {
-		Arc::new(RemoteAuthorityPermissionResolver::new(&address))
-	} else {
-		Arc::new(AlwaysPermissionGranted {})
-	};
 
 	if role.is_authority() {
 		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
