@@ -368,12 +368,20 @@ pub fn new_full_base(
 			warp_sync: Some(warp_sync),
 		})?;
 
+	let permission_resolver: Arc<dyn PermissionResolver> =
+		if let Some(address) = config.remote_authority.clone() {
+			Arc::new(RemoteAuthorityPermissionResolver::new(&address))
+		} else {
+			Arc::new(AlwaysPermissionGranted {})
+		};
+
 	if config.offchain_worker.enabled {
 		sc_service::build_offchain_workers(
 			&config,
 			task_manager.spawn_handle(),
 			client.clone(),
 			network.clone(),
+			permission_resolver.clone(),
 		);
 	}
 
@@ -384,7 +392,6 @@ pub fn new_full_base(
 	let name = config.network.node_name.clone();
 	let enable_grandpa = !config.disable_grandpa;
 	let prometheus_registry = config.prometheus_registry().cloned();
-	let remote_authority = config.remote_authority.clone();
 
 	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		config,
@@ -415,12 +422,6 @@ pub fn new_full_base(
 	let (block_import, grandpa_link, babe_link) = import_setup;
 
 	(with_startup_data)(&block_import, &babe_link);
-
-	let permission_resolver: Arc<dyn PermissionResolver> = if let Some(address) = remote_authority {
-		Arc::new(RemoteAuthorityPermissionResolver::new(&address))
-	} else {
-		Arc::new(AlwaysPermissionGranted {})
-	};
 
 	if let sc_service::config::Role::Authority { .. } = &role {
 		let proposer = sc_basic_authorship::ProposerFactory::new(
