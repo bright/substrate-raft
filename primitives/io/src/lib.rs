@@ -1168,6 +1168,13 @@ pub trait Offchain {
 			.is_validator()
 	}
 
+	/// Returns if the local node is a leader validator.
+	fn has_session_permission(&mut self, session_index: u32) -> bool {
+		self.extension::<OffchainWorkerExt>()
+			.expect("has_session_permission can be called only in the offchain worker context")
+			.has_session_permission(session_index)
+	}
+
 	/// Submit an encoded transaction to the pool.
 	///
 	/// The transaction will end up in the pool.

@@ -188,6 +188,7 @@ enum OffchainErr<BlockNumber> {
 	TooEarly,
 	WaitingForInclusion(BlockNumber),
 	AlreadyOnline(u32),
+	NoSessionPermission,
 	FailedSigning,
 	FailedToAcquireLock,
 	NetworkState,
@@ -200,6 +201,9 @@ impl<BlockNumber: sp_std::fmt::Debug> sp_std::fmt::Debug for OffchainErr<BlockNu
 			OffchainErr::TooEarly => write!(fmt, "Too early to send heartbeat."),
 			OffchainErr::WaitingForInclusion(ref block) => {
 				write!(fmt, "Heartbeat already sent at {:?}. Waiting for inclusion.", block)
+			},
+			OffchainErr::NoSessionPermission => {
+				write!(fmt, "Node has no session permission.")
 			},
 			OffchainErr::AlreadyOnline(auth_idx) => {
 				write!(fmt, "Authority {} is already online", auth_idx)
@@ -694,6 +698,15 @@ impl<T: Config> Pallet<T> {
 
 		if !should_heartbeat {
 			return Err(OffchainErr::TooEarly)
+		}
+
+		let current_session: u32 = T::ValidatorSet::session_index();
+		if !sp_io::offchain::has_session_permission(current_session) {
+			log::debug!(
+				target: "runtime::im-online",
+				"Skipping sending heartbeat message, node has no session permission."
+			);
+			return Err(OffchainErr::NoSessionPermission)
 		}
 
 		let session_index = T::ValidatorSet::session_index();

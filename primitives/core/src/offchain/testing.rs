@@ -216,6 +216,10 @@ impl offchain::Externalities for TestOffchainExt {
 		true
 	}
 
+	fn has_session_permission(&self, _: u32) -> bool {
+		true
+	}
+
 	fn network_state(&self) -> Result<OpaqueNetworkState, ()> {
 		Ok(OpaqueNetworkState { peer_id: Default::default(), external_addresses: vec![] })
 	}

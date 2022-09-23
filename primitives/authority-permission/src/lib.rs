@@ -21,6 +21,7 @@ use sp_consensus_slots::Slot;
 pub trait PermissionResolver: Send + Sync {
 	async fn resolve_slot(&self, slot: Slot) -> bool;
 	async fn resolve_round(&self, round: u64) -> bool;
+	async fn resolve_session(&self, session_index: u32) -> bool;
 }
 
 pub struct AlwaysPermissionGranted {}
@@ -32,6 +33,10 @@ impl PermissionResolver for AlwaysPermissionGranted {
 	}
 
 	async fn resolve_round(&self, _: u64) -> bool {
+		true
+	}
+
+	async fn resolve_session(&self, _: u32) -> bool {
 		true
 	}
 }

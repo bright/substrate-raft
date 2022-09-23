@@ -8150,11 +8150,13 @@ name = "sc-authority-permission"
 version = "4.0.0-dev"
 dependencies = [
  "async-trait",
+ "futures",
  "httpmock",
  "log",
  "reqwest",
  "sp-authority-permission",
  "sp-consensus-slots",
+ "sp-core",
  "tokio",
 ]
 
@@ -8973,6 +8975,7 @@ dependencies = [
  "parity-scale-codec",
  "parking_lot 0.12.1",
  "rand 0.7.3",
+ "sc-authority-permission",
  "sc-block-builder",
  "sc-client-api",
  "sc-client-db",
@@ -8982,6 +8985,7 @@ dependencies = [
  "sc-transaction-pool-api",
  "sc-utils",
  "sp-api",
+ "sp-authority-permission",
  "sp-consensus",
  "sp-core",
  "sp-offchain",
@@ -9144,6 +9148,7 @@ dependencies = [
  "serde_json",
  "sp-api",
  "sp-application-crypto",
+ "sp-authority-permission",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",

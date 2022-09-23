@@ -23,6 +23,7 @@ use codec::{Decode, Encode};
 use futures::Future;
 pub use http::SharedClient;
 use libp2p::{Multiaddr, PeerId};
+use sp_authority_permission::PermissionResolver;
 use sp_core::{
 	offchain::{
 		self, HttpError, HttpRequestId, HttpRequestStatus, OffchainStorage, OpaqueMultiaddr,
@@ -30,10 +31,11 @@ use sp_core::{
 	},
 	OpaquePeerId,
 };
+use tokio::runtime::Builder;
+
 pub use sp_offchain::STORAGE_PREFIX;
 
 mod http;
-
 mod timestamp;
 
 fn unavailable_yet<R: Default>(name: &str) -> R {
@@ -149,6 +151,10 @@ pub(crate) struct Api {
 	network_provider: Arc<dyn NetworkProvider + Send + Sync>,
 	/// Is this node a potential validator?
 	is_validator: bool,
+
+	/// Remote authority.
+	remote_authority: Option<Arc<dyn PermissionResolver>>,
+
 	/// Everything HTTP-related is handled by a different struct.
 	http: http::HttpApi,
 }
@@ -156,6 +162,18 @@ pub(crate) struct Api {
 impl offchain::Externalities for Api {
 	fn is_validator(&self) -> bool {
 		self.is_validator
+	}
+
+	fn has_session_permission(&self, session_index: u32) -> bool {
+		match &self.remote_authority {
+			Some(remote) =>
+				return Builder::new_current_thread()
+					.enable_all()
+					.build()
+					.unwrap()
+					.block_on(remote.resolve_session(session_index)),
+			_ => true,
+		}
 	}
 
 	fn network_state(&self) -> Result<OpaqueNetworkState, ()> {
@@ -304,11 +322,12 @@ impl AsyncApi {
 	pub fn new(
 		network_provider: Arc<dyn NetworkProvider + Send + Sync>,
 		is_validator: bool,
+		remote_authority: Option<Arc<dyn PermissionResolver>>,
 		shared_http_client: SharedClient,
 	) -> (Api, Self) {
 		let (http_api, http_worker) = http::http(shared_http_client);
 
-		let api = Api { network_provider, is_validator, http: http_api };
+		let api = Api { network_provider, is_validator, remote_authority, http: http_api };
 
 		let async_api = Self { http: Some(http_worker) };
 
@@ -426,7 +445,7 @@ mod tests {
 		let mock = Arc::new(TestNetwork());
 		let shared_client = SharedClient::new();
 
-		AsyncApi::new(mock, false, shared_client)
+		AsyncApi::new(mock, false, None, shared_client)
 	}
 
 	fn offchain_db() -> Db<LocalStorage> {
