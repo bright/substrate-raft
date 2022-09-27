@@ -40,7 +40,7 @@ use sc_client_api::{
 	utils::is_descendent_of,
 };
 use sc_telemetry::{telemetry, TelemetryHandle, CONSENSUS_DEBUG, CONSENSUS_INFO};
-use sp_authority_permission::PermissionResolver;
+use sp_authority_permission::{AuthorityPermissionCmd, AuthorityPermissionHandle, PermissionType};
 use sp_blockchain::HeaderMetadata;
 use sp_consensus::SelectChain as SelectChainT;
 use sp_finality_grandpa::{
@@ -441,7 +441,7 @@ pub(crate) struct Environment<Backend, Block: BlockT, C, N: NetworkT<Block>, SC,
 	pub(crate) justification_sender: Option<GrandpaJustificationSender<Block>>,
 	pub(crate) telemetry: Option<TelemetryHandle>,
 	pub(crate) _phantom: PhantomData<Backend>,
-	pub(crate) permission_resolver: Arc<dyn PermissionResolver>,
+	pub(crate) permission_handle: Option<Arc<AuthorityPermissionHandle>>,
 }
 
 impl<BE, Block: BlockT, C, N: NetworkT<Block>, SC, VR> Environment<BE, Block, C, N, SC, VR> {
@@ -705,7 +705,13 @@ where
 	) -> voter::RoundData<Self::Id, Self::Timer, Self::In, Self::Out> {
 		let prevote_timer = Delay::new(self.config.gossip_duration * 2);
 		let precommit_timer = Delay::new(self.config.gossip_duration * 4);
-		let can = futures::executor::block_on(self.permission_resolver.resolve_round(round));
+		//kz: get rid of option???
+		let can = if let Some(pr) = self.permission_handle.clone() {
+			pr.has(AuthorityPermissionCmd::prepare(PermissionType::ROUND(round)))
+		} else {
+			true
+		};
+
 		let local_id = if can {
 			local_authority_id(&self.voters, self.config.keystore.as_ref())
 		} else {

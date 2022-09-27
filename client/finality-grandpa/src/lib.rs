@@ -144,7 +144,7 @@ use sp_finality_grandpa::{AuthorityList, AuthoritySignature, SetId};
 use until_imported::UntilGlobalMessageBlocksImported;
 
 // Re-export these two because it's just so damn convenient.
-use sp_authority_permission::PermissionResolver;
+use sp_authority_permission::AuthorityPermissionHandle;
 pub use sp_finality_grandpa::{AuthorityId, AuthorityPair, GrandpaApi, ScheduledChange};
 use std::marker::PhantomData;
 
@@ -720,7 +720,7 @@ pub struct GrandpaParams<Block: BlockT, C, N, SC, VR> {
 	/// TelemetryHandle instance.
 	pub telemetry: Option<TelemetryHandle>,
 	/// Do we have permission to author ?
-	pub permission_resolver: Arc<dyn PermissionResolver>,
+	pub permission_handle: Option<Arc<AuthorityPermissionHandle>>,
 }
 
 /// Returns the configuration value to put in
@@ -767,7 +767,7 @@ where
 		prometheus_registry,
 		shared_voter_state,
 		telemetry,
-		permission_resolver,
+		permission_handle,
 	} = grandpa_params;
 
 	// NOTE: we have recently removed `run_grandpa_observer` from the public
@@ -841,7 +841,7 @@ where
 		shared_voter_state,
 		justification_sender,
 		telemetry,
-		permission_resolver,
+		permission_handle,
 	);
 
 	let voter_work = voter_work.map(|res| match res {
@@ -884,7 +884,7 @@ struct VoterWork<B, Block: BlockT, C, N: NetworkT<Block>, SC, VR> {
 	telemetry: Option<TelemetryHandle>,
 	/// Prometheus metrics.
 	metrics: Option<Metrics>,
-	permission_resolver: Arc<dyn PermissionResolver>,
+	permission_handle: Option<Arc<AuthorityPermissionHandle>>,
 }
 
 impl<B, Block, C, N, SC, VR> VoterWork<B, Block, C, N, SC, VR>
@@ -910,7 +910,7 @@ where
 		shared_voter_state: SharedVoterState,
 		justification_sender: GrandpaJustificationSender<Block>,
 		telemetry: Option<TelemetryHandle>,
-		permission_resolver: Arc<dyn PermissionResolver>,
+		permission_handle: Option<Arc<AuthorityPermissionHandle>>,
 	) -> Self {
 		let metrics = match prometheus_registry.as_ref().map(Metrics::register) {
 			Some(Ok(metrics)) => Some(metrics),
@@ -936,7 +936,7 @@ where
 			justification_sender: Some(justification_sender),
 			telemetry: telemetry.clone(),
 			_phantom: PhantomData,
-			permission_resolver: permission_resolver.clone(),
+			permission_handle: permission_handle.clone(),
 		});
 
 		let mut work = VoterWork {
@@ -949,7 +949,7 @@ where
 			network,
 			telemetry,
 			metrics,
-			permission_resolver,
+			permission_handle,
 		};
 		work.rebuild_voter();
 		work
@@ -1083,7 +1083,7 @@ where
 					justification_sender: self.env.justification_sender.clone(),
 					telemetry: self.telemetry.clone(),
 					_phantom: PhantomData,
-					permission_resolver: self.permission_resolver.clone(),
+					permission_handle: self.permission_handle.clone(),
 				});
 
 				self.rebuild_voter();

@@ -4969,7 +4969,6 @@ dependencies = [
  "regex",
  "remote-externalities",
  "sc-authority-discovery",
- "sc-authority-permission",
  "sc-basic-authorship",
  "sc-block-builder",
  "sc-chain-spec",
@@ -4999,7 +4998,6 @@ dependencies = [
  "soketto",
  "sp-api",
  "sp-authority-discovery",
- "sp-authority-permission",
  "sp-authorship",
  "sp-blockchain",
  "sp-consensus",
@@ -5138,7 +5136,6 @@ dependencies = [
  "node-template-runtime",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
- "sc-authority-permission",
  "sc-basic-authorship",
  "sc-cli",
  "sc-client-api",
@@ -5154,7 +5151,6 @@ dependencies = [
  "sc-transaction-pool",
  "sc-transaction-pool-api",
  "sp-api",
- "sp-authority-permission",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
@@ -9119,6 +9115,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "pin-project",
  "rand 0.7.3",
+ "sc-authority-permission",
  "sc-block-builder",
  "sc-chain-spec",
  "sc-client-api",
@@ -9144,6 +9141,7 @@ dependencies = [
  "serde_json",
  "sp-api",
  "sp-application-crypto",
+ "sp-authority-permission",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",
@@ -9971,7 +9969,6 @@ dependencies = [
 name = "sp-authority-permission"
 version = "4.0.0-dev"
 dependencies = [
- "async-trait",
  "sp-consensus-slots",
 ]
 

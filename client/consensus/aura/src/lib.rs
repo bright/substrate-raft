@@ -67,7 +67,7 @@ pub use import_queue::{
 	ImportQueueParams,
 };
 pub use sc_consensus_slots::SlotProportion;
-use sp_authority_permission::PermissionResolver;
+use sp_authority_permission::AuthorityPermissionHandle;
 pub use sp_consensus::SyncOracle;
 pub use sp_consensus_aura::{
 	digests::CompatibleDigestItem,
@@ -135,7 +135,7 @@ pub struct StartAuraParams<C, SC, I, PF, SO, L, CIDP, BS, CAW> {
 	/// Can we author a block with this node?
 	pub can_author_with: CAW,
 	/// Do we have permission to author ?
-	pub permission_resolver: Arc<dyn PermissionResolver>,
+	pub permission_handle: Option<Arc<AuthorityPermissionHandle>>,
 	/// The proportion of the slot dedicated to proposing.
 	///
 	/// The block proposing will be limited to this proportion of the slot from the starting of the
@@ -164,7 +164,7 @@ pub fn start_aura<P, B, C, SC, I, PF, SO, L, CIDP, BS, CAW, Error>(
 		backoff_authoring_blocks,
 		keystore,
 		can_author_with,
-		permission_resolver,
+		permission_handle,
 		block_proposal_slot_portion,
 		max_block_proposal_slot_portion,
 		telemetry,
@@ -210,7 +210,7 @@ where
 		sync_oracle,
 		create_inherent_data_providers,
 		can_author_with,
-		permission_resolver,
+		permission_handle,
 	))
 }
 
@@ -573,7 +573,6 @@ mod tests {
 	use sc_keystore::LocalKeystore;
 	use sc_network_test::{Block as TestBlock, *};
 	use sp_application_crypto::key_types::AURA;
-	use sp_authority_permission::AlwaysPermissionGranted;
 	use sp_consensus::{
 		AlwaysCanAuthor, DisableProofRecording, NoNetwork as DummyOracle, Proposal,
 	};
@@ -767,7 +766,7 @@ mod tests {
 					),
 					keystore,
 					can_author_with: sp_consensus::AlwaysCanAuthor,
-					permission_resolver: Arc::new(AlwaysPermissionGranted {}),
+					permission_handle: None,
 					block_proposal_slot_portion: SlotProportion::new(0.5),
 					max_block_proposal_slot_portion: None,
 					telemetry: None,

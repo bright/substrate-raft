@@ -28,6 +28,7 @@ use futures::{channel::oneshot, future::ready, FutureExt, StreamExt};
 use jsonrpsee::RpcModule;
 use log::info;
 use prometheus_endpoint::Registry;
+use sc_authority_permission::permission_resolver_future;
 use sc_chain_spec::get_extension;
 use sc_client_api::{
 	execution_extensions::ExecutionExtensions, proof_provider::ProofProvider, BadBlocks,
@@ -59,6 +60,7 @@ use sc_telemetry::{telemetry, ConnectionMessage, Telemetry, TelemetryHandle, SUB
 use sc_transaction_pool_api::MaintainedTransactionPool;
 use sc_utils::mpsc::{tracing_unbounded, TracingUnboundedSender};
 use sp_api::{CallApiAt, ProvideRuntimeApi};
+use sp_authority_permission::{AuthorityPermissionCmd, AuthorityPermissionHandle};
 use sp_blockchain::{HeaderBackend, HeaderMetadata};
 use sp_consensus::block_validation::{
 	BlockAnnounceValidator, Chain, DefaultBlockAnnounceValidator,
@@ -70,7 +72,11 @@ use sp_runtime::{
 	traits::{Block as BlockT, BlockIdTo, NumberFor, Zero},
 	BuildStorage,
 };
-use std::{str::FromStr, sync::Arc, time::SystemTime};
+use std::{
+	str::FromStr,
+	sync::{Arc, Mutex},
+	time::SystemTime,
+};
 
 /// Full client type.
 pub type TFullClient<TBl, TRtApi, TExec> =
@@ -369,6 +375,8 @@ pub struct SpawnTasksParams<'a, TBl: BlockT, TCl, TExPool, TRpc, Backend> {
 	pub system_rpc_tx: TracingUnboundedSender<sc_rpc::system::Request<TBl>>,
 	/// Telemetry instance for this node.
 	pub telemetry: Option<&'a mut Telemetry>,
+	/// Remote authority address.
+	pub remote_authority: Option<String>,
 }
 
 /// Build a shared offchain workers instance.
@@ -406,7 +414,7 @@ where
 /// Spawn the tasks that are required to run a node.
 pub fn spawn_tasks<TBl, TBackend, TExPool, TRpc, TCl>(
 	params: SpawnTasksParams<TBl, TCl, TExPool, TRpc, TBackend>,
-) -> Result<RpcHandlers, Error>
+) -> Result<(RpcHandlers, Option<Arc<AuthorityPermissionHandle>>), Error>
 where
 	TCl: ProvideRuntimeApi<TBl>
 		+ HeaderMetadata<TBl, Error = sp_blockchain::Error>
@@ -446,6 +454,7 @@ where
 		network,
 		system_rpc_tx,
 		telemetry,
+		remote_authority,
 	} = params;
 
 	let chain_info = client.usage_info().chain;
@@ -465,6 +474,19 @@ where
 			init_telemetry(&mut config, network.clone(), client.clone(), telemetry, Some(sysinfo))
 		})
 		.transpose()?;
+
+	let authority_handle: Option<Arc<AuthorityPermissionHandle>> =
+		if let Some(address) = remote_authority {
+			let (sender, receiver) = std::sync::mpsc::channel::<AuthorityPermissionCmd>();
+			task_manager.spawn_handle().spawn(
+				"permission_resolver",
+				None,
+				permission_resolver_future(address.clone(), receiver),
+			);
+			Some(Arc::new(AuthorityPermissionHandle { requests: Mutex::new(sender) }))
+		} else {
+			None
+		};
 
 	info!("📦 Highest known block at #{}", chain_info.best_number);
 
@@ -540,7 +562,7 @@ where
 
 	task_manager.keep_alive((config.base_path, rpc));
 
-	Ok(rpc_handlers)
+	Ok((rpc_handlers, authority_handle))
 }
 
 async fn transaction_notifications<Block, ExPool, Network>(

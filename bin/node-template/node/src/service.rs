@@ -1,7 +1,6 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
 use node_template_runtime::{self, opaque::Block, RuntimeApi};
-use sc_authority_permission::RemoteAuthorityPermissionResolver;
 use sc_client_api::{BlockBackend, ExecutorProvider};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 pub use sc_executor::NativeElseWasmExecutor;
@@ -9,7 +8,6 @@ use sc_finality_grandpa::SharedVoterState;
 use sc_keystore::LocalKeystore;
 use sc_service::{error::Error as ServiceError, Configuration, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryWorker};
-use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use std::{sync::Arc, time::Duration};
 
@@ -235,24 +233,20 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 		})
 	};
 
-	let _rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
-		network: network.clone(),
-		client: client.clone(),
-		keystore: keystore_container.sync_keystore(),
-		task_manager: &mut task_manager,
-		transaction_pool: transaction_pool.clone(),
-		rpc_builder: rpc_extensions_builder,
-		backend,
-		system_rpc_tx,
-		config,
-		telemetry: telemetry.as_mut(),
-	})?;
-
-	let permission_resolver: Arc<dyn PermissionResolver> = if let Some(address) = remote_authority {
-		Arc::new(RemoteAuthorityPermissionResolver::new(&address))
-	} else {
-		Arc::new(AlwaysPermissionGranted {})
-	};
+	let (_rpc_handlers, permission_handle) =
+		sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+			network: network.clone(),
+			client: client.clone(),
+			keystore: keystore_container.sync_keystore(),
+			task_manager: &mut task_manager,
+			transaction_pool: transaction_pool.clone(),
+			rpc_builder: rpc_extensions_builder,
+			backend,
+			system_rpc_tx,
+			config,
+			telemetry: telemetry.as_mut(),
+			remote_authority,
+		})?;
 
 	if role.is_authority() {
 		let proposer_factory = sc_basic_authorship::ProposerFactory::new(
@@ -290,7 +284,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 				backoff_authoring_blocks,
 				keystore: keystore_container.sync_keystore(),
 				can_author_with,
-				permission_resolver: permission_resolver.clone(),
+				permission_handle: permission_handle.clone(),
 				sync_oracle: network.clone(),
 				justification_sync_link: network.clone(),
 				block_proposal_slot_portion: SlotProportion::new(2f32 / 3f32),
@@ -338,7 +332,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 			prometheus_registry,
 			shared_voter_state: SharedVoterState::empty(),
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
-			permission_resolver,
+			permission_handle,
 		};
 
 		// the GRANDPA voter task is considered infallible, i.e.

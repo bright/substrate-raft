@@ -26,7 +26,6 @@ use futures::prelude::*;
 use kitchensink_runtime::RuntimeApi;
 use node_executor::ExecutorDispatch;
 use node_primitives::Block;
-use sc_authority_permission::RemoteAuthorityPermissionResolver;
 use sc_client_api::{BlockBackend, ExecutorProvider};
 use sc_consensus_babe::{self, SlotProportion};
 use sc_executor::NativeElseWasmExecutor;
@@ -35,7 +34,6 @@ use sc_network_common::{protocol::event::Event, service::NetworkEventStream};
 use sc_service::{config::Configuration, error::Error as ServiceError, RpcHandlers, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_api::ProvideRuntimeApi;
-use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 use sp_core::crypto::Pair;
 use sp_runtime::{generic, traits::Block as BlockT, SaturatedConversion};
 use std::sync::Arc;
@@ -386,18 +384,20 @@ pub fn new_full_base(
 	let prometheus_registry = config.prometheus_registry().cloned();
 	let remote_authority = config.remote_authority.clone();
 
-	let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
-		config,
-		backend,
-		client: client.clone(),
-		keystore: keystore_container.sync_keystore(),
-		network: network.clone(),
-		rpc_builder: Box::new(rpc_builder),
-		transaction_pool: transaction_pool.clone(),
-		task_manager: &mut task_manager,
-		system_rpc_tx,
-		telemetry: telemetry.as_mut(),
-	})?;
+	let (rpc_handlers, permission_handle) =
+		sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+			config,
+			backend,
+			client: client.clone(),
+			keystore: keystore_container.sync_keystore(),
+			network: network.clone(),
+			rpc_builder: Box::new(rpc_builder),
+			transaction_pool: transaction_pool.clone(),
+			task_manager: &mut task_manager,
+			system_rpc_tx,
+			telemetry: telemetry.as_mut(),
+			remote_authority,
+		})?;
 
 	if let Some(hwbench) = hwbench {
 		sc_sysinfo::print_hwbench(&hwbench);
@@ -415,12 +415,6 @@ pub fn new_full_base(
 	let (block_import, grandpa_link, babe_link) = import_setup;
 
 	(with_startup_data)(&block_import, &babe_link);
-
-	let permission_resolver: Arc<dyn PermissionResolver> = if let Some(address) = remote_authority {
-		Arc::new(RemoteAuthorityPermissionResolver::new(&address))
-	} else {
-		Arc::new(AlwaysPermissionGranted {})
-	};
 
 	if let sc_service::config::Role::Authority { .. } = &role {
 		let proposer = sc_basic_authorship::ProposerFactory::new(
@@ -473,7 +467,7 @@ pub fn new_full_base(
 			backoff_authoring_blocks,
 			babe_link,
 			can_author_with,
-			permission_resolver: permission_resolver.clone(),
+			permission_handle: permission_handle.clone(),
 			block_proposal_slot_portion: SlotProportion::new(0.5),
 			max_block_proposal_slot_portion: None,
 			telemetry: telemetry.as_ref().map(|x| x.handle()),
@@ -550,7 +544,7 @@ pub fn new_full_base(
 			voting_rule: grandpa::VotingRulesBuilder::default().build(),
 			prometheus_registry,
 			shared_voter_state,
-			permission_resolver,
+			permission_handle,
 		};
 
 		// the GRANDPA voter task is considered infallible, i.e.

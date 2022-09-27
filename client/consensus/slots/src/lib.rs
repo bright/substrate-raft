@@ -38,7 +38,7 @@ use log::{debug, info, warn};
 use sc_consensus::{BlockImport, JustificationSyncLink};
 use sc_telemetry::{telemetry, TelemetryHandle, CONSENSUS_DEBUG, CONSENSUS_INFO, CONSENSUS_WARN};
 use sp_arithmetic::traits::BaseArithmetic;
-use sp_authority_permission::PermissionResolver;
+use sp_authority_permission::{AuthorityPermissionCmd, AuthorityPermissionHandle, PermissionType};
 use sp_consensus::{CanAuthorWith, Proposal, Proposer, SelectChain, SyncOracle};
 use sp_consensus_slots::{Slot, SlotDuration};
 use sp_inherents::CreateInherentDataProviders;
@@ -494,7 +494,7 @@ pub async fn start_slot_worker<B, C, W, SO, CIDP, CAW, Proof>(
 	sync_oracle: SO,
 	create_inherent_data_providers: CIDP,
 	can_author_with: CAW,
-	permission_resolver: Arc<dyn PermissionResolver>,
+	permission_handle: Option<Arc<AuthorityPermissionHandle>>,
 ) where
 	B: BlockT,
 	C: SelectChain<B>,
@@ -520,8 +520,14 @@ pub async fn start_slot_worker<B, C, W, SO, CIDP, CAW, Proof>(
 			continue
 		}
 
-		let has_permission = !permission_resolver.resolve_slot(slot_info.slot).await;
-		if has_permission {
+		let can = if let Some(pr) = permission_handle.clone() {
+			pr.has(AuthorityPermissionCmd::prepare(PermissionType::SLOT(slot_info.slot.clone())))
+		} else {
+			true
+		};
+
+		let has_permission = can;
+		if !has_permission {
 			debug!(target: "slots", "Skipping proposal slot due to lack of permission.");
 			continue
 		}

@@ -14,24 +14,39 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use async_trait::async_trait;
 use sp_consensus_slots::Slot;
+use std::sync::{mpsc, Mutex};
 
-#[async_trait]
-pub trait PermissionResolver: Send + Sync {
-	async fn resolve_slot(&self, slot: Slot) -> bool;
-	async fn resolve_round(&self, round: u64) -> bool;
+pub struct AuthorityPermissionHandle {
+	pub requests: Mutex<mpsc::Sender<AuthorityPermissionCmd>>,
 }
 
-pub struct AlwaysPermissionGranted {}
+type AuthorityCmdWithReceiver = (AuthorityPermissionCmd, mpsc::Receiver<bool>);
 
-#[async_trait]
-impl PermissionResolver for AlwaysPermissionGranted {
-	async fn resolve_slot(&self, _: Slot) -> bool {
-		true
+impl AuthorityPermissionHandle {
+	pub fn has(&self, cmd: AuthorityCmdWithReceiver) -> bool {
+		self.requests
+			.lock()
+			.expect("Could not lock")
+			.send(cmd.0)
+			.expect("Could not send command");
+		cmd.1.recv().expect("Could not receive result")
 	}
+}
 
-	async fn resolve_round(&self, _: u64) -> bool {
-		true
+pub enum PermissionType {
+	SLOT(Slot),
+	ROUND(u64),
+}
+
+pub struct AuthorityPermissionCmd {
+	pub permission_type: PermissionType,
+	pub respond_to: mpsc::Sender<bool>,
+}
+
+impl AuthorityPermissionCmd {
+	pub fn prepare(resolve_type: PermissionType) -> AuthorityCmdWithReceiver {
+		let (sender, receiver) = mpsc::channel();
+		(AuthorityPermissionCmd { permission_type: resolve_type, respond_to: sender }, receiver)
 	}
 }

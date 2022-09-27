@@ -141,7 +141,7 @@ pub use sp_consensus_babe::{
 };
 
 pub use aux_schema::load_block_weight as block_weight;
-use sp_authority_permission::PermissionResolver;
+use sp_authority_permission::AuthorityPermissionHandle;
 
 mod migration;
 mod verification;
@@ -411,7 +411,7 @@ pub struct BabeParams<B: BlockT, C, SC, E, I, SO, L, CIDP, BS, CAW> {
 	pub can_author_with: CAW,
 
 	/// Resolves authority permission
-	pub permission_resolver: Arc<dyn PermissionResolver>,
+	pub permission_handle: Option<Arc<AuthorityPermissionHandle>>,
 
 	/// The proportion of the slot dedicated to proposing.
 	///
@@ -443,7 +443,7 @@ pub fn start_babe<B, C, SC, E, I, SO, CIDP, BS, CAW, L, Error>(
 		backoff_authoring_blocks,
 		babe_link,
 		can_author_with,
-		permission_resolver,
+		permission_handle,
 		block_proposal_slot_portion,
 		max_block_proposal_slot_portion,
 		telemetry,
@@ -506,7 +506,7 @@ where
 		sync_oracle,
 		create_inherent_data_providers,
 		can_author_with,
-		permission_resolver,
+		permission_handle,
 	);
 
 	let (worker_tx, worker_rx) = channel(HANDLE_BUFFER_SIZE);

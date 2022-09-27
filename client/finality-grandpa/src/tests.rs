@@ -61,7 +61,6 @@ use sc_block_builder::{BlockBuilder, BlockBuilderProvider};
 use sc_consensus::LongestChain;
 use sc_keystore::LocalKeystore;
 use sp_application_crypto::key_types::GRANDPA;
-use sp_authority_permission::AlwaysPermissionGranted;
 
 type TestLinkHalf =
 	LinkHalf<Block, PeersFullClient, LongestChain<substrate_test_runtime_client::Backend, Block>>;
@@ -270,7 +269,7 @@ fn initialize_grandpa(
 			prometheus_registry: None,
 			shared_voter_state: SharedVoterState::empty(),
 			telemetry: None,
-			permission_resolver: Arc::new(AlwaysPermissionGranted {}),
+			permission_handle: None,
 		};
 		let voter =
 			run_grandpa_voter(grandpa_params).expect("all in order with client and network");
@@ -421,7 +420,7 @@ fn finalize_3_voters_1_full_observer() {
 			prometheus_registry: None,
 			shared_voter_state: SharedVoterState::empty(),
 			telemetry: None,
-			permission_resolver: Arc::new(AlwaysPermissionGranted {}),
+			permission_handle: None,
 		};
 
 		run_grandpa_voter(grandpa_params).expect("all in order with client and network")
@@ -513,7 +512,7 @@ fn transition_3_voters_twice_1_full_observer() {
 			prometheus_registry: None,
 			shared_voter_state: SharedVoterState::empty(),
 			telemetry: None,
-			permission_resolver: Arc::new(AlwaysPermissionGranted {}),
+			permission_handle: None,
 		};
 
 		voters
@@ -1013,7 +1012,7 @@ fn voter_persists_its_votes() {
 			prometheus_registry: None,
 			shared_voter_state: SharedVoterState::empty(),
 			telemetry: None,
-			permission_resolver: Arc::new(AlwaysPermissionGranted {}),
+			permission_handle: None,
 		};
 
 		run_grandpa_voter(grandpa_params).expect("all in order with client and network")
@@ -1055,7 +1054,7 @@ fn voter_persists_its_votes() {
 			prometheus_registry: None,
 			shared_voter_state: SharedVoterState::empty(),
 			telemetry: None,
-			permission_resolver: Arc::new(AlwaysPermissionGranted {}),
+			permission_handle: None,
 		};
 
 		run_grandpa_voter(grandpa_params)
@@ -1267,7 +1266,7 @@ fn voter_catches_up_to_latest_round_when_behind() {
 			prometheus_registry: None,
 			shared_voter_state: SharedVoterState::empty(),
 			telemetry: None,
-			permission_resolver: Arc::new(AlwaysPermissionGranted {}),
+			permission_handle: None,
 		};
 
 		Box::pin(run_grandpa_voter(grandpa_params).expect("all in order with client and network"))
@@ -1398,7 +1397,7 @@ where
 		justification_sender: None,
 		telemetry: None,
 		_phantom: PhantomData,
-		permission_resolver: Arc::new(AlwaysPermissionGranted {}),
+		permission_handle: None,
 	}
 }
 

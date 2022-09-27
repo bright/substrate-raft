@@ -1,8 +1,9 @@
 use async_trait::async_trait;
 use log::{debug, error};
 use reqwest::{Client, ClientBuilder};
-use sp_authority_permission::PermissionResolver;
+use sp_authority_permission::{AuthorityPermissionCmd, PermissionType};
 use sp_consensus_slots::Slot;
+use std::sync::mpsc::Receiver;
 
 pub struct RemoteAuthorityPermissionResolver {
 	client: Client,
@@ -13,6 +14,30 @@ impl RemoteAuthorityPermissionResolver {
 	pub fn new(base_url: &str) -> RemoteAuthorityPermissionResolver {
 		let client = ClientBuilder::new().build().expect("Could not create client");
 		RemoteAuthorityPermissionResolver { client, base_url: base_url.to_owned() }
+	}
+
+	async fn resolve_slot(&self, slot: Slot) -> bool {
+		match self.do_resolve_slot(slot).await {
+			Ok(result) => result,
+			Err(e) => {
+				error!(
+					target: "permission-resolver",
+					"Could not resolve permission, reason: {}", e);
+				false
+			},
+		}
+	}
+
+	async fn resolve_round(&self, round: u64) -> bool {
+		match self.do_resolve_round(round).await {
+			Ok(result) => result,
+			Err(e) => {
+				error!(
+					target: "permission-resolver",
+					"Could not resolve permission, reason: {}", e);
+				false
+			},
+		}
 	}
 
 	async fn do_resolve_slot(&self, slot: Slot) -> Result<bool, String> {
@@ -46,30 +71,18 @@ impl RemoteAuthorityPermissionResolver {
 	}
 }
 
-#[async_trait]
-impl PermissionResolver for RemoteAuthorityPermissionResolver {
-	async fn resolve_slot(&self, slot: Slot) -> bool {
-		match self.do_resolve_slot(slot).await {
-			Ok(result) => result,
-			Err(e) => {
-				error!(
-					target: "permission-resolver",
-					"Could not resolve permission, reason: {}", e);
-				false
-			},
-		}
-	}
-
-	async fn resolve_round(&self, round: u64) -> bool {
-		match self.do_resolve_round(round).await {
-			Ok(result) => result,
-			Err(e) => {
-				error!(
-					target: "permission-resolver",
-					"Could not resolve permission, reason: {}", e);
-				false
-			},
-		}
+pub async fn permission_resolver_future(
+	remote_authority: String,
+	receiver: Receiver<AuthorityPermissionCmd>,
+) {
+	let client = RemoteAuthorityPermissionResolver::new(&remote_authority);
+	loop {
+		let cmd = receiver.recv().expect("Could not receive command");
+		let can = match cmd.permission_type {
+			PermissionType::ROUND(round) => client.resolve_round(round).await,
+			PermissionType::SLOT(slot) => client.resolve_slot(slot).await,
+		};
+		cmd.respond_to.send(can).expect("Could not send to channel");
 	}
 }
 
@@ -77,7 +90,6 @@ impl PermissionResolver for RemoteAuthorityPermissionResolver {
 mod tests {
 	use super::*;
 	use httpmock::MockServer;
-	use sp_authority_permission::PermissionResolver;
 
 	#[tokio::test]
 	async fn test_remote_permits_slot() {
