@@ -520,13 +520,12 @@ pub async fn start_slot_worker<B, C, W, SO, CIDP, CAW, Proof>(
 			continue
 		}
 
-		let can = if let Some(pr) = permission_handle.clone() {
-			pr.has(AuthorityPermissionCmd::prepare(PermissionType::SLOT(slot_info.slot.clone())))
-		} else {
-			true
-		};
+		let has_permission = permission_handle.clone().map_or(true, |pr| {
+			pr.has_permission(AuthorityPermissionCmd::prepare(PermissionType::SLOT(
+				slot_info.slot.clone(),
+			)))
+		});
 
-		let has_permission = can;
 		if !has_permission {
 			debug!(target: "slots", "Skipping proposal slot due to lack of permission.");
 			continue

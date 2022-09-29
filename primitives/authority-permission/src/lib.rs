@@ -24,7 +24,7 @@ pub struct AuthorityPermissionHandle {
 type AuthorityCmdWithReceiver = (AuthorityPermissionCmd, mpsc::Receiver<bool>);
 
 impl AuthorityPermissionHandle {
-	pub fn has(&self, cmd: AuthorityCmdWithReceiver) -> bool {
+	pub fn has_permission(&self, cmd: AuthorityCmdWithReceiver) -> bool {
 		self.requests
 			.lock()
 			.expect("Could not lock")

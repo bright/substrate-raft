@@ -705,12 +705,10 @@ where
 	) -> voter::RoundData<Self::Id, Self::Timer, Self::In, Self::Out> {
 		let prevote_timer = Delay::new(self.config.gossip_duration * 2);
 		let precommit_timer = Delay::new(self.config.gossip_duration * 4);
-		//kz: get rid of option???
-		let can = if let Some(pr) = self.permission_handle.clone() {
-			pr.has(AuthorityPermissionCmd::prepare(PermissionType::ROUND(round)))
-		} else {
-			true
-		};
+
+		let can = self.permission_handle.clone().map_or(true, |pr| {
+			pr.has_permission(AuthorityPermissionCmd::prepare(PermissionType::ROUND(round)))
+		});
 
 		let local_id = if can {
 			local_authority_id(&self.voters, self.config.keystore.as_ref())
