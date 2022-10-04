@@ -1087,6 +1087,7 @@ fn voter_persists_its_votes() {
 			communication::SetId(0),
 			Arc::new(VoterSet::new(voters).unwrap()),
 			HasVoted::No,
+			Arc::new(AlwaysPermissionGranted {}),
 		);
 
 		runtime.spawn(bob_network);
@@ -1152,6 +1153,11 @@ fn voter_persists_its_votes() {
 					// by `Sink::poll_complete` to make sure items are being flushed. Given that
 					// we send in a loop including a delay until items are received, this can be
 					// ignored for the sake of reduced complexity.
+
+					future::poll_fn(|cx| Pin::new(&mut *round_tx.lock()).poll_ready(cx))
+						.await
+						.unwrap();
+
 					Pin::new(&mut *round_tx.lock())
 						.start_send(finality_grandpa::Message::Prevote(prevote))
 						.unwrap();
