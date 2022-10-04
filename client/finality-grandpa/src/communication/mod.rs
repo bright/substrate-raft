@@ -60,6 +60,7 @@ use gossip::{
 };
 use sc_network_common::service::{NetworkBlock, NetworkSyncForkRequest};
 use sc_utils::mpsc::TracingUnboundedReceiver;
+use sp_authority_permission::PermissionResolver;
 use sp_finality_grandpa::{AuthorityId, AuthoritySignature, RoundNumber, SetId as SetIdNumber};
 
 pub mod gossip;
@@ -313,6 +314,7 @@ impl<B: BlockT, N: Network<B>> NetworkBridge<B, N> {
 		set_id: SetId,
 		voters: Arc<VoterSet<AuthorityId>>,
 		has_voted: HasVoted<B>,
+		permission_resolver: Arc<dyn PermissionResolver>,
 	) -> (impl Stream<Item = SignedMessage<B>> + Unpin, OutgoingMessages<B>) {
 		self.note_round(round, set_id, &voters);
 
@@ -388,15 +390,18 @@ impl<B: BlockT, N: Network<B>> NetworkBridge<B, N> {
 			});
 
 		let (tx, out_rx) = mpsc::channel(0);
-		let outgoing = OutgoingMessages::<B> {
+
+		let round_num = round.0;
+		let outgoing = OutgoingMessages::<B>::new(
+			round.0,
+			set_id.0,
 			keystore,
-			round: round.0,
-			set_id: set_id.0,
-			network: self.gossip_engine.clone(),
-			sender: tx,
+			tx,
+			self.gossip_engine.clone(),
 			has_voted,
-			telemetry: self.telemetry.clone(),
-		};
+			self.telemetry.clone(),
+			Box::pin(async move { permission_resolver.resolve_round(round_num).await }),
+		);
 
 		// Combine incoming votes from external GRANDPA nodes with outgoing
 		// votes from our own GRANDPA voter to have a single
@@ -679,6 +684,33 @@ pub(crate) struct OutgoingMessages<Block: BlockT> {
 	network: Arc<Mutex<GossipEngine<Block>>>,
 	has_voted: HasVoted<Block>,
 	telemetry: Option<TelemetryHandle>,
+	permission_resolver: Pin<Box<dyn Future<Output = bool> + Send>>,
+	has_permission: Option<bool>,
+}
+
+impl<Block: BlockT> OutgoingMessages<Block> {
+	pub fn new(
+		round: RoundNumber,
+		set_id: SetIdNumber,
+		keystore: Option<LocalIdKeystore>,
+		sender: mpsc::Sender<SignedMessage<Block>>,
+		network: Arc<Mutex<GossipEngine<Block>>>,
+		has_voted: HasVoted<Block>,
+		telemetry: Option<TelemetryHandle>,
+		permission_resolver: Pin<Box<dyn Future<Output = bool> + Send>>,
+	) -> OutgoingMessages<Block> {
+		OutgoingMessages::<Block> {
+			keystore,
+			round,
+			set_id,
+			network,
+			sender,
+			has_voted,
+			telemetry,
+			permission_resolver,
+			has_permission: None,
+		}
+	}
 }
 
 impl<B: BlockT> Unpin for OutgoingMessages<B> {}
@@ -687,6 +719,13 @@ impl<Block: BlockT> Sink<Message<Block>> for OutgoingMessages<Block> {
 	type Error = Error;
 
 	fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+		if self.has_permission.is_none() {
+			self.has_permission = match Future::poll(Pin::new(&mut self.permission_resolver), cx) {
+				Poll::Ready(has) => Some(has),
+				Poll::Pending => return Poll::Pending,
+			};
+		}
+
 		Sink::poll_ready(Pin::new(&mut self.sender), cx).map(|elem| {
 			elem.map_err(|e| {
 				Error::Network(format!("Failed to poll_ready channel sender: {:?}", e))
@@ -753,16 +792,36 @@ impl<Block: BlockT> Sink<Message<Block>> for OutgoingMessages<Block> {
 			);
 
 			// announce the block we voted on to our peers.
-			self.network.lock().announce(target_hash, None);
 
-			// propagate the message to peers
-			let topic = round_topic::<Block>(self.round, self.set_id);
-			self.network.lock().gossip_message(topic, message.encode(), false);
+			match self.has_permission {
+				Some(true) => {
+					debug!(
+						target: "afg",
+						"Has permission for casting votes in round {}",
+						self.round
+					);
 
-			// forward the message to the inner sender.
-			return self.sender.start_send(signed).map_err(|e| {
-				Error::Network(format!("Failed to start_send on channel sender: {:?}", e))
-			})
+					self.network.lock().announce(target_hash, None);
+
+					// propagate the message to peers
+					let topic = round_topic::<Block>(self.round, self.set_id);
+					self.network.lock().gossip_message(topic, message.encode(), false);
+
+					// forward the message to the inner sender.
+					return self.sender.start_send(signed).map_err(|e| {
+						Error::Network(format!("Failed to start_send on channel sender: {:?}", e))
+					})
+				},
+
+				Some(false) | None => {
+					debug!(
+						target: "afg",
+						"No permission for casting votes in round {}, skipping.",
+						self.round
+					);
+					return Ok(())
+				},
+			}
 		};
 
 		Ok(())
