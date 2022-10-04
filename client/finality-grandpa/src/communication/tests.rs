@@ -22,9 +22,14 @@ use super::{
 	gossip::{self, GossipValidator},
 	Round, SetId, VoterSet,
 };
-use crate::{communication::grandpa_protocol_name, environment::SharedVoterSetState};
-use futures::prelude::*;
+use crate::{
+	communication::{grandpa_protocol_name, LocalIdKeystore, OutgoingMessages},
+	environment::{HasVoted, SharedVoterSetState},
+};
+use futures::{channel::mpsc, executor::block_on, prelude::*};
 use parity_scale_codec::Encode;
+use parking_lot::Mutex;
+use sc_keystore::LocalKeystore;
 use sc_network::{config::Role, Multiaddr, PeerId, ReputationChange};
 use sc_network_common::{
 	config::MultiaddrWithPeerId,
@@ -37,11 +42,13 @@ use sc_network_common::{
 		NetworkSyncForkRequest, NotificationSender, NotificationSenderError,
 	},
 };
-use sc_network_gossip::Validator;
+use sc_network_gossip::{GossipEngine, ValidationResult, Validator, ValidatorContext};
 use sc_network_test::{Block, Hash};
 use sc_utils::mpsc::{tracing_unbounded, TracingUnboundedReceiver, TracingUnboundedSender};
-use sp_finality_grandpa::AuthorityList;
+use sp_core::{crypto::key_types::GRANDPA, H256};
+use sp_finality_grandpa::{AuthorityId, AuthorityList};
 use sp_keyring::Ed25519Keyring;
+use sp_keystore::{SyncCryptoStore, SyncCryptoStorePtr};
 use sp_runtime::traits::NumberFor;
 use std::{
 	collections::HashSet,
@@ -240,8 +247,7 @@ fn config() -> crate::Config {
 fn voter_set_state() -> SharedVoterSetState<Block> {
 	use crate::{authorities::AuthoritySet, environment::VoterSetState};
 	use finality_grandpa::round::State as RoundState;
-	use sp_core::{crypto::ByteArray, H256};
-	use sp_finality_grandpa::AuthorityId;
+	use sp_core::crypto::ByteArray;
 
 	let state = RoundState::genesis((H256::zero(), 0));
 	let base = state.prevote_ghost.unwrap();
@@ -442,6 +448,89 @@ fn good_commit_leads_to_relay() {
 		});
 
 	futures::executor::block_on(test);
+}
+
+struct AllowAll;
+impl Validator<Block> for AllowAll {
+	fn validate(
+		&self,
+		_context: &mut dyn ValidatorContext<Block>,
+		_sender: &PeerId,
+		_data: &[u8],
+	) -> ValidationResult<H256> {
+		ValidationResult::ProcessAndKeep(H256::default())
+	}
+}
+
+fn create_keystore(authority: Ed25519Keyring) -> (SyncCryptoStorePtr, tempfile::TempDir) {
+	let keystore_path = tempfile::tempdir().expect("Creates keystore path");
+	let keystore =
+		Arc::new(LocalKeystore::open(keystore_path.path(), None).expect("Creates keystore"));
+	SyncCryptoStore::ed25519_generate_new(&*keystore, GRANDPA, Some(&authority.to_seed()))
+		.expect("Creates authority key");
+
+	(keystore, keystore_path)
+}
+
+fn prepare_gossip_engine() -> GossipEngine<Block> {
+	let (tx, _) = tracing_unbounded("test");
+
+	let network = TestNetwork { sender: tx };
+	GossipEngine::<Block>::new(network.clone(), "/my_protocol", Arc::new(AllowAll {}), None)
+}
+
+#[test]
+fn votes_sent_with_permission() {
+	let key = Ed25519Keyring::Alice;
+	let (keystore, _keystore_path) = create_keystore(key);
+	let gossip_engine = prepare_gossip_engine();
+	let (tx, rx) = mpsc::channel(0);
+	let local_id_keystore: LocalIdKeystore = (key.public().into(), keystore).into();
+	let mut om = OutgoingMessages::<Block>::new(
+		1,
+		1,
+		Some(local_id_keystore),
+		tx,
+		Arc::new(Mutex::new(gossip_engine)),
+		HasVoted::No,
+		None,
+		Box::pin(async move { true }),
+	);
+
+	block_on(future::poll_fn(|cx| Pin::new(&mut om).poll_ready(cx))).unwrap();
+	let msg = finality_grandpa::Prevote { target_number: 0, target_hash: H256::random() };
+	Pin::new(&mut om).start_send(finality_grandpa::Message::Prevote(msg)).unwrap();
+	block_on(future::poll_fn(|cx| Pin::new(&mut om).poll_close(cx))).unwrap();
+
+	let v: Vec<_> = block_on(rx.collect());
+	assert_eq!(v.len(), 1);
+}
+
+#[test]
+fn votes_not_sent_without_permission() {
+	let key = Ed25519Keyring::Alice;
+	let (keystore, _keystore_path) = create_keystore(key);
+	let gossip_engine = prepare_gossip_engine();
+	let (tx, rx) = mpsc::channel(0);
+	let local_id_keystore: LocalIdKeystore = (key.public().into(), keystore).into();
+	let mut om = OutgoingMessages::<Block>::new(
+		1,
+		1,
+		Some(local_id_keystore),
+		tx,
+		Arc::new(Mutex::new(gossip_engine)),
+		HasVoted::No,
+		None,
+		Box::pin(async move { false }),
+	);
+
+	let msg = finality_grandpa::Prevote { target_number: 0, target_hash: H256::random() };
+	block_on(future::poll_fn(|cx| Pin::new(&mut om).poll_ready(cx))).unwrap();
+	Pin::new(&mut om).start_send(finality_grandpa::Message::Prevote(msg)).unwrap();
+	block_on(future::poll_fn(|cx| Pin::new(&mut om).poll_close(cx))).unwrap();
+
+	let v: Vec<_> = block_on(rx.collect());
+	assert_eq!(v.len(), 0);
 }
 
 #[test]

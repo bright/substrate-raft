@@ -705,17 +705,8 @@ where
 	) -> voter::RoundData<Self::Id, Self::Timer, Self::In, Self::Out> {
 		let prevote_timer = Delay::new(self.config.gossip_duration * 2);
 		let precommit_timer = Delay::new(self.config.gossip_duration * 4);
-		let can = futures::executor::block_on(self.permission_resolver.resolve_round(round));
-		let local_id = if can {
-			local_authority_id(&self.voters, self.config.keystore.as_ref())
-		} else {
-			// We are not taking part in round if we do not provide voter_id in RoundData
-			debug!(
-				target: "afg", "Skipping voting in round {} because permission was not granted.",
-				round,
-			);
-			None
-		};
+
+		let local_id = local_authority_id(&self.voters, self.config.keystore.as_ref());
 
 		let has_voted = match self.voter_set_state.has_voted(round) {
 			HasVoted::Yes(id, vote) =>
@@ -751,6 +742,7 @@ where
 			crate::communication::SetId(self.set_id),
 			self.voters.clone(),
 			has_voted,
+			self.permission_resolver.clone(),
 		);
 
 		// schedule incoming messages from the network to be held until
