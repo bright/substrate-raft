@@ -120,8 +120,9 @@ impl<Storage: OffchainStorage> offchain::DbExternalities for Db<Storage> {
 			"CAS",
 		);
 		match kind {
-			StorageKind::PERSISTENT =>
-				self.persistent.compare_and_set(STORAGE_PREFIX, key, old_value, new_value),
+			StorageKind::PERSISTENT => {
+				self.persistent.compare_and_set(STORAGE_PREFIX, key, old_value, new_value)
+			},
 			StorageKind::LOCAL => unavailable_yet(LOCAL_DB),
 		}
 	}
@@ -152,8 +153,8 @@ pub(crate) struct Api {
 	/// Is this node a potential validator?
 	is_validator: bool,
 
-	/// Remote authority.
-	remote_authority: Option<Arc<dyn PermissionResolver>>,
+	/// Permission resolver.
+	permission_resolver: Option<Arc<dyn PermissionResolver>>,
 
 	/// Everything HTTP-related is handled by a different struct.
 	http: http::HttpApi,
@@ -165,13 +166,14 @@ impl offchain::Externalities for Api {
 	}
 
 	fn has_session_permission(&self, session_index: u32) -> bool {
-		match &self.remote_authority {
-			Some(remote) =>
+		match &self.permission_resolver {
+			Some(remote) => {
 				return Builder::new_current_thread()
 					.enable_all()
 					.build()
 					.unwrap()
-					.block_on(remote.resolve_session(session_index)),
+					.block_on(remote.resolve_session(session_index))
+			},
 			_ => true,
 		}
 	}
@@ -322,12 +324,12 @@ impl AsyncApi {
 	pub fn new(
 		network_provider: Arc<dyn NetworkProvider + Send + Sync>,
 		is_validator: bool,
-		remote_authority: Option<Arc<dyn PermissionResolver>>,
+		permission_resolver: Option<Arc<dyn PermissionResolver>>,
 		shared_http_client: SharedClient,
 	) -> (Api, Self) {
 		let (http_api, http_worker) = http::http(shared_http_client);
 
-		let api = Api { network_provider, is_validator, remote_authority, http: http_api };
+		let api = Api { network_provider, is_validator, permission_resolver, http: http_api };
 
 		let async_api = Self { http: Some(http_worker) };
 
