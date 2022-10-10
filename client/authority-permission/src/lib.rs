@@ -4,6 +4,9 @@ use reqwest::{Client, ClientBuilder};
 use sp_authority_permission::PermissionResolver;
 use sp_consensus_slots::Slot;
 
+pub mod cache;
+pub use cache::PermissionResolverCache;
+
 pub struct RemoteAuthorityPermissionResolver {
 	client: Client,
 	base_url: String,
