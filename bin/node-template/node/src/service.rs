@@ -1,7 +1,7 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
 use node_template_runtime::{self, opaque::Block, RuntimeApi};
-use sc_authority_permission::RemoteAuthorityPermissionResolver;
+use sc_authority_permission::{cache::PermissionResolverCache, RemoteAuthorityPermissionResolver};
 use sc_client_api::{BlockBackend, ExecutorProvider};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 pub use sc_executor::NativeElseWasmExecutor;
@@ -209,7 +209,9 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 
 	let permission_resolver: Arc<dyn PermissionResolver> =
 		if let Some(address) = config.remote_authority.clone() {
-			Arc::new(RemoteAuthorityPermissionResolver::new(&address))
+			Arc::new(PermissionResolverCache::new(Box::new(
+				RemoteAuthorityPermissionResolver::new(&address),
+			)))
 		} else {
 			Arc::new(AlwaysPermissionGranted {})
 		};

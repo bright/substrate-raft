@@ -26,7 +26,7 @@ use futures::prelude::*;
 use kitchensink_runtime::RuntimeApi;
 use node_executor::ExecutorDispatch;
 use node_primitives::Block;
-use sc_authority_permission::RemoteAuthorityPermissionResolver;
+use sc_authority_permission::{cache::PermissionResolverCache, RemoteAuthorityPermissionResolver};
 use sc_client_api::{BlockBackend, ExecutorProvider};
 use sc_consensus_babe::{self, SlotProportion};
 use sc_executor::NativeElseWasmExecutor;
@@ -370,7 +370,9 @@ pub fn new_full_base(
 
 	let permission_resolver: Arc<dyn PermissionResolver> =
 		if let Some(address) = config.remote_authority.clone() {
-			Arc::new(RemoteAuthorityPermissionResolver::new(&address))
+			Arc::new(PermissionResolverCache::new(Box::new(
+				RemoteAuthorityPermissionResolver::new(&address),
+			)))
 		} else {
 			Arc::new(AlwaysPermissionGranted {})
 		};
