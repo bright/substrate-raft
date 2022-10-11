@@ -1,11 +1,6 @@
 version: "3.7"
 services:
 
-  authority-service:
-    build:
-      context: .
-      dockerfile: ./bin/authority-service/docker/authority-service.Dockerfile
-
   validator-alice-1:
     image: parity/substrate
     ports:
@@ -25,7 +20,7 @@ services:
       - "--bootnodes"
       - "/dns/validator-bob/tcp/30333/p2p/12D3KooWHdiAxVd8uMQR1hGWXccidmfCwLqcMpGwR6QcTP6QRMuD"
       - "--remote-authority"
-      - "http://authority-service:8000"
+      - "pd-1:2379"
       - "--unsafe-ws-external"
       - "--unsafe-rpc-external"
       - "-lafg=debug"
@@ -44,7 +39,7 @@ services:
       - "--bootnodes"
       - "/dns/validator-bob/tcp/30333/p2p/12D3KooWHdiAxVd8uMQR1hGWXccidmfCwLqcMpGwR6QcTP6QRMuD"
       - "--remote-authority"
-      - "http://authority-service:8000"
+      - "pd-1:2379"
       - "-lafg=debug"
 
   validator-bob:

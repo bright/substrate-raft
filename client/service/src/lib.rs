@@ -69,6 +69,7 @@ pub use sc_chain_spec::{
 	Properties, RuntimeGenesis,
 };
 
+use sc_authority_permission::{PermissionResolverCache, RemoteAuthorityPermissionResolver};
 pub use sc_consensus::ImportQueue;
 pub use sc_executor::NativeExecutionDispatch;
 #[doc(hidden)]
@@ -387,6 +388,16 @@ where
 			Ok(Box::new((waiting::HttpServer(Some(http)), waiting::WsServer(Some(ws))))),
 		Err(e) => Err(Error::Application(e)),
 	}
+}
+
+/// Initializes permission resolver
+pub fn init_permission_resolver(config: &Configuration, address: &str) -> PermissionResolverCache {
+	tokio::task::block_in_place(|| {
+		config.tokio_handle.block_on(async {
+			let remote = RemoteAuthorityPermissionResolver::new(address).await;
+			PermissionResolverCache::new(Box::new(remote))
+		})
+	})
 }
 
 /// Transaction pool adapter.
