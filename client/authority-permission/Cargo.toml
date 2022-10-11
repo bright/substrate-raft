@@ -20,8 +20,7 @@ log = { version = "0.4.17", default-features = false }
 sp-authority-permission = { version = "4.0.0-dev", path = "../../primitives/authority-permission" }
 sp-consensus-slots = { version = "0.10.0-dev", path = "../../primitives/consensus/slots" }
 sp-core = { version = "6.0.0", path = "../../primitives/core" }
-reqwest = "0.11.11"
+tikv-client = "0.1.0"
 
 [dev-dependencies]
-httpmock = { version = "0.6" }
 tokio = { version = "1.17.0", features = ["macros", "rt-multi-thread"] }
