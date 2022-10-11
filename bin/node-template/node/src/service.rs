@@ -1,7 +1,6 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
 use node_template_runtime::{self, opaque::Block, RuntimeApi};
-use sc_authority_permission::{cache::PermissionResolverCache, RemoteAuthorityPermissionResolver};
 use sc_client_api::{BlockBackend, ExecutorProvider};
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
 pub use sc_executor::NativeElseWasmExecutor;
@@ -196,6 +195,13 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 		Vec::default(),
 	));
 
+	let permission_resolver: Arc<dyn PermissionResolver> =
+		if let Some(address) = config.remote_authority.clone() {
+			Arc::new(sc_service::init_permission_resolver(&config, &address))
+		} else {
+			Arc::new(AlwaysPermissionGranted {})
+		};
+
 	let (network, system_rpc_tx, network_starter) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
@@ -206,15 +212,6 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 			block_announce_validator_builder: None,
 			warp_sync: Some(warp_sync),
 		})?;
-
-	let permission_resolver: Arc<dyn PermissionResolver> =
-		if let Some(address) = config.remote_authority.clone() {
-			Arc::new(PermissionResolverCache::new(Box::new(
-				RemoteAuthorityPermissionResolver::new(&address),
-			)))
-		} else {
-			Arc::new(AlwaysPermissionGranted {})
-		};
 
 	if config.offchain_worker.enabled {
 		sc_service::build_offchain_workers(
