@@ -134,6 +134,8 @@ pub struct OffchainState {
 	pub seed: [u8; 32],
 	/// A timestamp simulating the current time.
 	pub timestamp: Timestamp,
+	/// A flag simulating session permission.
+	pub session_permission: bool,
 }
 
 impl OffchainState {
@@ -198,6 +200,7 @@ impl TestOffchainExt {
 	pub fn new() -> (Self, Arc<RwLock<OffchainState>>) {
 		let ext = Self::default();
 		let state = ext.0.clone();
+		ext.0.write().session_permission = true;
 		(ext, state)
 	}
 
@@ -206,6 +209,7 @@ impl TestOffchainExt {
 		offchain_db: TestPersistentOffchainDB,
 	) -> (Self, Arc<RwLock<OffchainState>>) {
 		let (ext, state) = Self::new();
+		ext.0.write().session_permission = true;
 		ext.0.write().persistent_storage = offchain_db;
 		(ext, state)
 	}
@@ -217,7 +221,7 @@ impl offchain::Externalities for TestOffchainExt {
 	}
 
 	fn has_session_permission(&self, _: u32) -> bool {
-		true
+		self.0.read().session_permission
 	}
 
 	fn network_state(&self) -> Result<OpaqueNetworkState, ()> {

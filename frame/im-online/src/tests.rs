@@ -258,6 +258,39 @@ fn should_generate_heartbeats() {
 }
 
 #[test]
+fn should_not_generate_heartbeats_when_no_session_permission() {
+	use frame_support::traits::OffchainWorker;
+
+	let mut ext = new_test_ext();
+	let (offchain, _state) = TestOffchainExt::new();
+	let (pool, state) = TestTransactionPoolExt::new();
+	ext.register_extension(OffchainDbExt::new(offchain.clone()));
+	ext.register_extension(OffchainWorkerExt::new(offchain.clone()));
+	ext.register_extension(TransactionPoolExt::new(pool));
+
+	// Enable session permission.
+	_state.write().session_permission = false;
+
+	ext.execute_with(|| {
+		// given
+		let block = 1;
+		System::set_block_number(block);
+		UintAuthorityId::set_all_keys(vec![0, 1, 2]);
+		// buffer new validators
+		Session::rotate_session();
+		// enact the change and buffer another one
+		Validators::mutate(|l| *l = Some(vec![1, 2, 3, 4, 5, 6]));
+		Session::rotate_session();
+
+		// when
+		ImOnline::offchain_worker(block);
+
+		// All validators have `0` as their session key, no heartbeat produced.
+		assert_eq!(state.read().transactions.len(), 0);
+	});
+}
+
+#[test]
 fn should_cleanup_received_heartbeats_on_session_end() {
 	new_test_ext().execute_with(|| {
 		advance_session();
