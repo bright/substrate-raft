@@ -21,6 +21,10 @@ services:
       - "/dns/validator-bob/tcp/30333/p2p/12D3KooWHdiAxVd8uMQR1hGWXccidmfCwLqcMpGwR6QcTP6QRMuD"
       - "--remote-authority"
       - "pd-1:2379"
+      - "--remote-authority"
+      - "pd-2:2379"
+      - "--remote-authority"
+      - "pd-3:2379"
       - "--unsafe-ws-external"
       - "--unsafe-rpc-external"
       - "-lafg=debug"
@@ -40,6 +44,10 @@ services:
       - "/dns/validator-bob/tcp/30333/p2p/12D3KooWHdiAxVd8uMQR1hGWXccidmfCwLqcMpGwR6QcTP6QRMuD"
       - "--remote-authority"
       - "pd-1:2379"
+      - "--remote-authority"
+      - "pd-2:2379"
+      - "--remote-authority"
+      - "pd-3:2379"
       - "-lafg=debug"
 
   validator-bob:
@@ -122,25 +130,47 @@ services:
       - --peer-urls=http://0.0.0.0:2380
       - --advertise-client-urls=http://pd-1:2379
       - --advertise-peer-urls=http://pd-1:2380
+      - --initial-cluster=pd-1=http://pd-1:2380, pd-2=http://pd-2:2380, pd-3=http://pd-3:2380
+
+  pd-2:
+    image: pingcap/pd
+    command:
+      - --name=pd-2
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd-2:2379
+      - --advertise-peer-urls=http://pd-2:2380
+      - --initial-cluster=pd-2=http://pd-2:2380, pd-1=http://pd-1:2380, pd-3=http://pd-3:2380
+
+  pd-3:
+    image: pingcap/pd
+    command:
+      - --name=pd-3
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd-3:2379
+      - --advertise-peer-urls=http://pd-3:2380
+      - --initial-cluster=pd-3=http://pd-3:2380, pd-2=http://pd-2:2380, pd-1=http://pd-1:2380
+
 
   tikv-1:
     image: pingcap/tikv
     command:
-      - "--pd=pd-1:2379"
+      - "--pd=pd-1:2379, pd-2:2379, pd-3:2379"
       - "--addr=0.0.0.0:20160"
       - "--advertise-addr=tikv-1:20160"
 
   tikv-2:
     image: pingcap/tikv
     command:
-      - "--pd=pd-1:2379"
+      - "--pd=pd-1:2379, pd-2:2379, pd-3:2379"
       - "--addr=0.0.0.0:20160"
       - "--advertise-addr=tikv-2:20160"
 
   tikv-3:
     image: pingcap/tikv
     command:
-      - "--pd=pd-1:2379"
+      - "--pd=pd-1:2379, pd-2:2379, pd-3:2379"
       - "--addr=0.0.0.0:20160"
       - "--advertise-addr=tikv-3:20160"
 

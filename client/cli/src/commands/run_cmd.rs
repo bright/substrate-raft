@@ -269,7 +269,7 @@ pub struct RunCmd {
 	///
 	/// Ex: `http://localhost:8080`
 	#[clap(long, value_name = "ADDR")]
-	pub remote_authority: Option<String>,
+	pub remote_authority: Vec<String>,
 }
 
 impl RunCmd {
@@ -400,7 +400,7 @@ impl CliConfiguration for RunCmd {
 		Ok(self.no_grandpa)
 	}
 
-	fn remote_authority(&self) -> Result<Option<String>> {
+	fn remote_authority(&self) -> Result<Vec<String>> {
 		Ok(self.remote_authority.clone())
 	}
 

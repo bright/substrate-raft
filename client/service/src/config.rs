@@ -152,8 +152,8 @@ pub struct Configuration {
 	pub informant_output_format: sc_informant::OutputFormat,
 	/// Maximum number of different runtime versions that can be cached.
 	pub runtime_cache_size: u8,
-	/// Remote authority address.
-	pub remote_authority: Option<String>,
+	/// TiKV PD addresses
+	pub remote_authority: Vec<String>,
 }
 
 /// Type for tasks spawned by the executor.

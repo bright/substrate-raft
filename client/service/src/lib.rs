@@ -80,6 +80,7 @@ pub use sc_rpc::{
 pub use sc_tracing::TracingReceiver;
 pub use sc_transaction_pool::Options as TransactionPoolOptions;
 pub use sc_transaction_pool_api::{error::IntoPoolError, InPoolTransaction, TransactionPool};
+use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 #[doc(hidden)]
 pub use std::{ops::Deref, result::Result, sync::Arc};
 pub use task_manager::{SpawnTaskHandle, TaskManager, DEFAULT_GROUP_NAME};
@@ -391,13 +392,18 @@ where
 }
 
 /// Initializes permission resolver
-pub fn init_permission_resolver(config: &Configuration, address: &str) -> PermissionResolverCache {
-	tokio::task::block_in_place(|| {
-		config.tokio_handle.block_on(async {
-			let remote = RemoteAuthorityPermissionResolver::new(address).await;
-			PermissionResolverCache::new(Box::new(remote))
+pub fn init_permission_resolver(config: &Configuration) -> Arc<dyn PermissionResolver> {
+	if config.remote_authority.is_empty() {
+		return Arc::new(AlwaysPermissionGranted {})
+	} else {
+		return tokio::task::block_in_place(|| {
+			config.tokio_handle.block_on(async {
+				let remote =
+					RemoteAuthorityPermissionResolver::new(config.remote_authority.clone()).await;
+				return Arc::new(PermissionResolverCache::new(Box::new(remote)))
+			})
 		})
-	})
+	};
 }
 
 /// Transaction pool adapter.
