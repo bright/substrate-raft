@@ -468,11 +468,11 @@ pub trait CliConfiguration<DCV: DefaultConfigurationValues = ()>: Sized {
 		Ok(2)
 	}
 
-	/// Returns remote authority address (None if disabled)
+	/// Returns TiKV PD addresses
 	///
-	/// By default this is `None`.
-	fn remote_authority(&self) -> Result<Option<String>> {
-		Ok(None)
+	/// By default this is empty vector.
+	fn remote_authority(&self) -> Result<Vec<String>> {
+		Ok(vec![])
 	}
 
 	/// Activate or not the automatic announcing of blocks after import

@@ -30,8 +30,8 @@ pub struct RemoteAuthorityPermissionResolver {
 }
 
 impl RemoteAuthorityPermissionResolver {
-	pub async fn new(base_url: &str) -> RemoteAuthorityPermissionResolver {
-		let client = TransactionClient::new(vec![base_url]).await.expect("Could not create client");
+	pub async fn new(pd_addresses: Vec<String>) -> RemoteAuthorityPermissionResolver {
+		let client = TransactionClient::new(pd_addresses).await.expect("Could not create client");
 		RemoteAuthorityPermissionResolver { client }
 	}
 
