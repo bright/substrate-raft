@@ -34,7 +34,7 @@ use sc_network_common::{protocol::event::Event, service::NetworkEventStream};
 use sc_service::{config::Configuration, error::Error as ServiceError, RpcHandlers, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_api::ProvideRuntimeApi;
-use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
+use sp_authority_permission::PermissionResolver;
 use sp_core::crypto::Pair;
 use sp_runtime::{generic, traits::Block as BlockT, SaturatedConversion};
 use std::sync::Arc;
@@ -368,11 +368,7 @@ pub fn new_full_base(
 		})?;
 
 	let permission_resolver: Arc<dyn PermissionResolver> =
-		if let Some(address) = config.remote_authority.clone() {
-			Arc::new(sc_service::init_permission_resolver(&config, &address))
-		} else {
-			Arc::new(AlwaysPermissionGranted {})
-		};
+		sc_service::init_permission_resolver(&config);
 
 	if config.offchain_worker.enabled {
 		sc_service::build_offchain_workers(

@@ -389,10 +389,7 @@ where
 		client.clone(),
 		sc_offchain::OffchainWorkerOptions {
 			enable_http_requests: false,
-			remote_authority: match &config.remote_authority {
-				Some(_url) => Some(permission_resolver.clone()),
-				_ => None,
-			},
+			remote_authority: Some(permission_resolver),
 		},
 	)));
 
