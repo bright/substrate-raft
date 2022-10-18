@@ -5,8 +5,10 @@ use sp_consensus_slots::Slot;
 use tikv_client::{transaction::Client, Error, TransactionClient, Value};
 
 pub mod cache;
+pub mod metrics;
 
 pub use cache::PermissionResolverCache;
+pub use metrics::PermissionResolverMetrics;
 
 enum Key {
 	SLOT,

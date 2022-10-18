@@ -28,9 +28,13 @@ services:
       - "--unsafe-ws-external"
       - "--unsafe-rpc-external"
       - "-lafg=debug"
+      - "--prometheus-port"
+      - "9615"
 
   validator-alice-2:
     image: parity/substrate
+    ports:
+      - "9616:9616"
     command:
       - "substrate"
       - "--base-path"
@@ -49,6 +53,8 @@ services:
       - "--remote-authority"
       - "pd-3:2379"
       - "-lafg=debug"
+      - "--prometheus-port"
+      - "9616"
 
   validator-bob:
     image: parity/substrate
