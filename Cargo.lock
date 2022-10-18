@@ -8174,6 +8174,8 @@ dependencies = [
  "sp-authority-permission",
  "sp-consensus-slots",
  "sp-core",
+ "substrate-prometheus-endpoint",
+ "thiserror",
  "tikv-client",
  "tokio",
 ]

@@ -69,7 +69,9 @@ pub use sc_chain_spec::{
 	Properties, RuntimeGenesis,
 };
 
-use sc_authority_permission::{PermissionResolverCache, RemoteAuthorityPermissionResolver};
+use sc_authority_permission::{
+	PermissionResolverCache, RemoteAuthorityPermissionResolver, PermissionResolverMetrics,
+};
 pub use sc_consensus::ImportQueue;
 pub use sc_executor::NativeExecutionDispatch;
 #[doc(hidden)]
@@ -393,17 +395,21 @@ where
 
 /// Initializes permission resolver
 pub fn init_permission_resolver(config: &Configuration) -> Arc<dyn PermissionResolver> {
-	if config.remote_authority.is_empty() {
-		return Arc::new(AlwaysPermissionGranted {})
+	let mut resolver: Box<dyn PermissionResolver> = if config.remote_authority.is_empty() {
+		Box::new(AlwaysPermissionGranted {})
 	} else {
-		return tokio::task::block_in_place(|| {
+		Box::new(tokio::task::block_in_place(|| {
 			config.tokio_handle.block_on(async {
-				let remote =
-					RemoteAuthorityPermissionResolver::new(config.remote_authority.clone()).await;
-				return Arc::new(PermissionResolverCache::new(Box::new(remote)))
+				return RemoteAuthorityPermissionResolver::new(config.remote_authority.clone()).await
 			})
-		})
+		}))
 	};
+
+	if let Some(registry) = config.prometheus_registry() {
+		resolver = Box::new(PermissionResolverMetrics::new(resolver, registry).unwrap())
+	}
+
+	return Arc::new(PermissionResolverCache::new(resolver))
 }
 
 /// Transaction pool adapter.

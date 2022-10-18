@@ -17,6 +17,8 @@ targets = ["x86_64-unknown-linux-gnu"]
 async-trait = "0.1.57"
 futures = "0.3.21"
 log = { version = "0.4.17", default-features = false }
+thiserror = "1.0"
+prometheus-endpoint = { package = "substrate-prometheus-endpoint", version = "0.10.0-dev", path = "../../utils/prometheus" }
 sp-authority-permission = { version = "4.0.0-dev", path = "../../primitives/authority-permission" }
 sp-consensus-slots = { version = "0.10.0-dev", path = "../../primitives/consensus/slots" }
 sp-core = { version = "6.0.0", path = "../../primitives/core" }
