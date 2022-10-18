@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use log::{debug, error};
 use sp_authority_permission::PermissionResolver;
 use sp_consensus_slots::Slot;
-use std::ops::Deref;
 use tikv_client::{transaction::Client, Error, TransactionClient, Value};
 
 pub mod cache;

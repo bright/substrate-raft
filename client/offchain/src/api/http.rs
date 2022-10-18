@@ -762,6 +762,7 @@ mod tests {
 	use core::convert::Infallible;
 	use futures::{future, StreamExt};
 	use lazy_static::lazy_static;
+	use sp_authority_permission::AlwaysPermissionGranted;
 	use sp_core::offchain::{Duration, Externalities, HttpError, HttpRequestId, HttpRequestStatus};
 
 	// Using lazy_static to avoid spawning lots of different SharedClients,
@@ -1116,7 +1117,12 @@ mod tests {
 
 		{
 			let mock = Arc::new(TestNetwork());
-			let (mut api, async_api) = AsyncApi::new(mock, false, None, shared_client.clone());
+			let (mut api, async_api) = AsyncApi::new(
+				mock,
+				false,
+				Arc::new(AlwaysPermissionGranted {}),
+				shared_client.clone(),
+			);
 			let id = api.http_request_start("lol", "nope", &[]).unwrap();
 			api.http_request_write_body(id, &[], None).unwrap();
 			futures::executor::block_on(async move {
