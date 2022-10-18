@@ -153,7 +153,7 @@ pub(crate) struct Api {
 	is_validator: bool,
 
 	/// Permission resolver.
-	permission_resolver: Option<Arc<dyn PermissionResolver>>,
+	permission_resolver: Arc<dyn PermissionResolver>,
 
 	/// Everything HTTP-related is handled by a different struct.
 	http: http::HttpApi,
@@ -165,15 +165,11 @@ impl offchain::Externalities for Api {
 	}
 
 	fn has_session_permission(&self, session_index: u32) -> bool {
-		match &self.permission_resolver {
-			Some(remote) =>
-				return Builder::new_current_thread()
-					.enable_all()
-					.build()
-					.unwrap()
-					.block_on(remote.resolve_session(session_index)),
-			_ => true,
-		}
+		return Builder::new_current_thread()
+			.enable_all()
+			.build()
+			.unwrap()
+			.block_on(self.permission_resolver.resolve_session(session_index))
 	}
 
 	fn network_state(&self) -> Result<OpaqueNetworkState, ()> {
@@ -322,7 +318,7 @@ impl AsyncApi {
 	pub fn new(
 		network_provider: Arc<dyn NetworkProvider + Send + Sync>,
 		is_validator: bool,
-		permission_resolver: Option<Arc<dyn PermissionResolver>>,
+		permission_resolver: Arc<dyn PermissionResolver>,
 		shared_http_client: SharedClient,
 	) -> (Api, Self) {
 		let (http_api, http_worker) = http::http(shared_http_client);

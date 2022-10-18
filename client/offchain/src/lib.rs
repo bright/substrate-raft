@@ -54,6 +54,7 @@ use threadpool::ThreadPool;
 mod api;
 
 pub use api::Db as OffchainDb;
+use sp_authority_permission::AlwaysPermissionGranted;
 pub use sp_authority_permission::PermissionResolver;
 pub use sp_offchain::{OffchainWorkerApi, STORAGE_PREFIX};
 
@@ -73,7 +74,7 @@ pub struct OffchainWorkerOptions {
 	pub enable_http_requests: bool,
 
 	/// URL of remote authority.
-	pub remote_authority: Option<Arc<dyn PermissionResolver>>,
+	pub remote_authority: Arc<dyn PermissionResolver>,
 }
 
 /// An offchain workers manager.
@@ -90,7 +91,10 @@ impl<Client, Block: traits::Block> OffchainWorkers<Client, Block> {
 	pub fn new(client: Arc<Client>) -> Self {
 		Self::new_with_options(
 			client,
-			OffchainWorkerOptions { enable_http_requests: true, remote_authority: None },
+			OffchainWorkerOptions {
+				enable_http_requests: true,
+				remote_authority: Arc::new(AlwaysPermissionGranted {}),
+			},
 		)
 	}
 
