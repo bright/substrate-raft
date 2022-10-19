@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use log::{debug, error};
 use sp_authority_permission::PermissionResolver;
 use sp_consensus_slots::Slot;
-use tikv_client::{transaction::Client, Error, TransactionClient, Value};
+use tikv_client::{transaction::Client, Error, Timestamp, Transaction, TransactionClient, Value};
 
 pub mod cache;
 pub mod metrics;
@@ -26,13 +26,66 @@ impl Key {
 	}
 }
 
+#[async_trait]
+pub trait TiKVClient: Send + Sync {
+	async fn begin_optimistic(&self) -> Result<Box<dyn TiKVTransaction>, Error>;
+}
+
+#[async_trait]
+pub trait TiKVTransaction: Send {
+	async fn get_for_update(&mut self, key: String) -> Result<Option<Value>, Error>;
+	async fn put(&mut self, key: String, value: Vec<u8>) -> Result<(), Error>;
+	async fn commit(&mut self) -> Result<Option<Timestamp>, Error>;
+	async fn rollback(&mut self) -> Result<(), Error>;
+}
+
+pub async fn create_remote_authority_provider(
+	pd_addresses: Vec<String>,
+) -> RemoteAuthorityPermissionResolver {
+	let client = TransactionClient::new(pd_addresses).await.expect("Could not create client");
+	RemoteAuthorityPermissionResolver { client: Box::new(TiKVClientProxy { inner: client }) }
+}
+
+struct TiKVClientProxy {
+	inner: Client,
+}
+
+#[async_trait]
+impl TiKVClient for TiKVClientProxy {
+	async fn begin_optimistic(&self) -> Result<Box<dyn TiKVTransaction>, Error> {
+		Ok(Box::new(TiKVTransactionProxy { inner: self.inner.begin_optimistic().await? }))
+	}
+}
+
+struct TiKVTransactionProxy {
+	inner: Transaction,
+}
+
+#[async_trait]
+impl TiKVTransaction for TiKVTransactionProxy {
+	async fn get_for_update(&mut self, key: String) -> Result<Option<Value>, Error> {
+		self.inner.get_for_update(key).await
+	}
+
+	async fn put(&mut self, key: String, value: Vec<u8>) -> Result<(), Error> {
+		self.inner.put(key, value).await
+	}
+
+	async fn commit(&mut self) -> Result<Option<Timestamp>, Error> {
+		self.inner.commit().await
+	}
+
+	async fn rollback(&mut self) -> Result<(), Error> {
+		self.inner.rollback().await
+	}
+}
+
 pub struct RemoteAuthorityPermissionResolver {
-	client: Client,
+	client: Box<dyn TiKVClient>,
 }
 
 impl RemoteAuthorityPermissionResolver {
-	pub async fn new(pd_addresses: Vec<String>) -> RemoteAuthorityPermissionResolver {
-		let client = TransactionClient::new(pd_addresses).await.expect("Could not create client");
+	pub async fn new(client: Box<dyn TiKVClient>) -> RemoteAuthorityPermissionResolver {
 		RemoteAuthorityPermissionResolver { client }
 	}
 
@@ -123,5 +176,124 @@ impl PermissionResolver for RemoteAuthorityPermissionResolver {
 				false
 			},
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use sp_authority_permission::PermissionResolver;
+
+	struct MockedTiKVClient {
+		slot: Option<Slot>,
+		round: Option<u64>,
+		session: Option<u32>,
+	}
+
+	#[async_trait]
+	impl TiKVClient for MockedTiKVClient {
+		async fn begin_optimistic(&self) -> Result<Box<dyn TiKVTransaction>, Error> {
+			Ok(Box::new(MockedTiKVTransaction {
+				slot: *&self.slot,
+				round: *&self.round,
+				session: *&self.session,
+			}))
+		}
+	}
+
+	struct MockedTiKVTransaction {
+		slot: Option<Slot>,
+		round: Option<u64>,
+		session: Option<u32>,
+	}
+
+	#[async_trait]
+	impl TiKVTransaction for MockedTiKVTransaction {
+		async fn get_for_update(&mut self, key: String) -> Result<Option<Value>, Error> {
+			if key == Key::SLOT.as_str() {
+				Ok(self.slot.map(|s| u64::to_be_bytes(s.into()).to_vec()))
+			} else if key == Key::ROUND.as_str() {
+				Ok(self.round.map(|r| u64::to_be_bytes(r).to_vec()))
+			} else if key == Key::SESSION.as_str() {
+				Ok(self.session.map(|s| u64::to_be_bytes(s.into()).to_vec()))
+			} else {
+				Ok(None)
+			}
+		}
+
+		async fn put(&mut self, _: String, _: Vec<u8>) -> Result<(), Error> {
+			Ok(())
+		}
+
+		async fn commit(&mut self) -> Result<Option<Timestamp>, Error> {
+			Ok(Some(Timestamp::default()))
+		}
+
+		async fn rollback(&mut self) -> Result<(), Error> {
+			Ok(())
+		}
+	}
+
+	#[tokio::test]
+	async fn test_permits_round_if_higher() {
+		let client = MockedTiKVClient { slot: None, round: Some(1), session: None };
+		let resolver = RemoteAuthorityPermissionResolver::new(Box::new(client)).await;
+		assert!(resolver.resolve_round(2).await)
+	}
+
+	#[tokio::test]
+	async fn test_denies_round_if_equal() {
+		let client = MockedTiKVClient { slot: None, round: Some(1), session: None };
+		let resolver = RemoteAuthorityPermissionResolver::new(Box::new(client)).await;
+		assert!(!resolver.resolve_round(1).await)
+	}
+
+	#[tokio::test]
+	async fn test_denies_round_if_lower() {
+		let client = MockedTiKVClient { slot: None, round: Some(1), session: None };
+		let resolver = RemoteAuthorityPermissionResolver::new(Box::new(client)).await;
+		assert!(!resolver.resolve_round(0).await)
+	}
+
+	#[tokio::test]
+	async fn test_permits_session_if_higher() {
+		let client = MockedTiKVClient { slot: None, round: None, session: Some(1) };
+		let resolver = RemoteAuthorityPermissionResolver::new(Box::new(client)).await;
+		assert!(resolver.resolve_session(2).await)
+	}
+
+	#[tokio::test]
+	async fn test_denies_session_if_equal() {
+		let client = MockedTiKVClient { slot: None, round: None, session: Some(1) };
+		let resolver = RemoteAuthorityPermissionResolver::new(Box::new(client)).await;
+		assert!(!resolver.resolve_session(1).await)
+	}
+
+	#[tokio::test]
+	async fn test_denies_session_if_lower() {
+		let client = MockedTiKVClient { slot: None, round: None, session: Some(1) };
+		let resolver = RemoteAuthorityPermissionResolver::new(Box::new(client)).await;
+		assert!(!resolver.resolve_session(0).await)
+	}
+
+	#[tokio::test]
+	async fn test_permits_slot_if_higher() {
+		let client = MockedTiKVClient { slot: Some(1.into()), round: None, session: None };
+		let resolver = RemoteAuthorityPermissionResolver::new(Box::new(client)).await;
+		assert!(resolver.resolve_slot(2.into()).await)
+	}
+
+	#[tokio::test]
+	async fn test_denies_slot_if_equal() {
+		let client = MockedTiKVClient { slot: Some(1.into()), round: None, session: None };
+		let resolver = RemoteAuthorityPermissionResolver::new(Box::new(client)).await;
+		assert!(!resolver.resolve_slot(1.into()).await)
+	}
+
+	#[tokio::test]
+	async fn test_denies_slot_if_lower() {
+		let client = MockedTiKVClient { slot: Some(1.into()), round: None, session: None };
+		let resolver = RemoteAuthorityPermissionResolver::new(Box::new(client)).await;
+		assert!(!resolver.resolve_slot(0.into()).await)
 	}
 }

@@ -347,6 +347,7 @@ mod tests {
 		service::{NetworkPeers, NetworkStateInfo},
 	};
 	use sc_peerset::ReputationChange;
+	use sp_authority_permission::AlwaysPermissionGranted;
 	use sp_core::offchain::{DbExternalities, Externalities};
 	use std::time::SystemTime;
 
@@ -441,7 +442,7 @@ mod tests {
 		let mock = Arc::new(TestNetwork());
 		let shared_client = SharedClient::new();
 
-		AsyncApi::new(mock, false, None, shared_client)
+		AsyncApi::new(mock, false, Arc::new(AlwaysPermissionGranted {}), shared_client)
 	}
 
 	fn offchain_db() -> Db<LocalStorage> {
