@@ -1102,7 +1102,12 @@ mod tests {
 
 		{
 			let mock = Arc::new(TestNetwork());
-			let (mut api, async_api) = AsyncApi::new(mock, false, None, shared_client.clone());
+			let (mut api, async_api) = AsyncApi::new(
+				mock,
+				false,
+				Arc::new(AlwaysPermissionGranted {}),
+				shared_client.clone(),
+			);
 			api.timestamp();
 
 			futures::executor::block_on(async move {
