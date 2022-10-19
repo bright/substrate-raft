@@ -70,7 +70,7 @@ pub use sc_chain_spec::{
 };
 
 use sc_authority_permission::{
-	PermissionResolverCache, RemoteAuthorityPermissionResolver, PermissionResolverMetrics,
+	create_remote_authority_provider, PermissionResolverCache, PermissionResolverMetrics,
 };
 pub use sc_consensus::ImportQueue;
 pub use sc_executor::NativeExecutionDispatch;
@@ -398,11 +398,13 @@ pub fn init_permission_resolver(config: &Configuration) -> Arc<dyn PermissionRes
 	let mut resolver: Box<dyn PermissionResolver> = if config.remote_authority.is_empty() {
 		Box::new(AlwaysPermissionGranted {})
 	} else {
-		Box::new(tokio::task::block_in_place(|| {
+		tokio::task::block_in_place(|| {
 			config.tokio_handle.block_on(async {
-				return RemoteAuthorityPermissionResolver::new(config.remote_authority.clone()).await
+				let remote =
+					create_remote_authority_provider(config.remote_authority.clone()).await;
+				Box::new(PermissionResolverCache::new(Box::new(remote)))
 			})
-		}))
+		})
 	};
 
 	if let Some(registry) = config.prometheus_registry() {
