@@ -74,7 +74,7 @@ pub struct OffchainWorkerOptions {
 	pub enable_http_requests: bool,
 
 	/// URL of remote authority.
-	pub remote_authority: Arc<dyn PermissionResolver>,
+	pub permission_resolver: Arc<dyn PermissionResolver>,
 }
 
 /// An offchain workers manager.
@@ -93,7 +93,7 @@ impl<Client, Block: traits::Block> OffchainWorkers<Client, Block> {
 			client,
 			OffchainWorkerOptions {
 				enable_http_requests: true,
-				remote_authority: Arc::new(AlwaysPermissionGranted {}),
+				permission_resolver: Arc::new(AlwaysPermissionGranted {}),
 			},
 		)
 	}
@@ -163,7 +163,7 @@ where
 			let (api, runner) = api::AsyncApi::new(
 				network_provider,
 				is_validator,
-				self.options.remote_authority.clone(),
+				self.options.permission_resolver.clone(),
 				self.shared_http_client.clone(),
 			);
 			tracing::debug!(target: LOG_TARGET, "Spawning offchain workers at {:?}", at);

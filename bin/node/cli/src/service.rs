@@ -34,7 +34,7 @@ use sc_network_common::{protocol::event::Event, service::NetworkEventStream};
 use sc_service::{config::Configuration, error::Error as ServiceError, RpcHandlers, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_api::ProvideRuntimeApi;
-use sp_authority_permission::PermissionResolver;
+use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 use sp_core::crypto::Pair;
 use sp_runtime::{generic, traits::Block as BlockT, SaturatedConversion};
 use std::sync::Arc;
@@ -367,8 +367,7 @@ pub fn new_full_base(
 			warp_sync: Some(warp_sync),
 		})?;
 
-	let permission_resolver: Arc<dyn PermissionResolver> =
-		sc_service::init_permission_resolver(&config);
+	let permission_resolver: Arc<dyn PermissionResolver> = Arc::new(AlwaysPermissionGranted {});
 
 	if config.offchain_worker.enabled {
 		sc_service::build_offchain_workers(
