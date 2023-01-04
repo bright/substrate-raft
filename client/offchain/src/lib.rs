@@ -73,7 +73,7 @@ pub struct OffchainWorkerOptions {
 	/// If not enabled, any http request will panic.
 	pub enable_http_requests: bool,
 
-	/// URL of remote authority.
+	/// Permission resolver.
 	pub permission_resolver: Arc<dyn PermissionResolver>,
 }
 
