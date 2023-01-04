@@ -60,3 +60,29 @@ impl PermissionResolverFactory for AlwaysPermissionGrantedFactory {
 		Box::new(AlwaysPermissionGranted {})
 	}
 }
+
+pub struct NeverPermissionGranted {}
+
+#[async_trait]
+impl PermissionResolver for NeverPermissionGranted {
+	async fn resolve_slot(&self, _: Slot) -> bool {
+		false
+	}
+
+	async fn resolve_round(&self, _: u64) -> bool {
+		false
+	}
+
+	async fn resolve_session(&self, _: u32) -> bool {
+		false
+	}
+}
+
+pub struct NeverPermissionGrantedFactory {}
+
+#[async_trait]
+impl PermissionResolverFactory for NeverPermissionGrantedFactory {
+	async fn create(&self) -> Box<dyn PermissionResolver> {
+		Box::new(NeverPermissionGranted {})
+	}
+}
