@@ -33,6 +33,7 @@ use sc_service::{
 	},
 	BasePath, Configuration, Role,
 };
+use sp_authority_permission::AlwaysPermissionGrantedFactory;
 use sp_blockchain::{ApplyExtrinsicFailed::Validity, Error::ApplyExtrinsicFailed};
 use sp_consensus::BlockOrigin;
 use sp_keyring::Sr25519Keyring;
@@ -113,6 +114,7 @@ fn new_node(tokio_handle: Handle) -> node_cli::service::NewFullBase {
 		base_path: Some(base_path),
 		informant_output_format: Default::default(),
 		wasm_runtime_overrides: None,
+		permission_resolver_factory: Box::new(AlwaysPermissionGrantedFactory {}),
 	};
 
 	node_cli::service::new_full_base(config, false, |_, _| ())

@@ -38,6 +38,7 @@ use sc_service::{
 };
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::BlockId;
+use sp_authority_permission::AlwaysPermissionGrantedFactory;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::traits::Block as BlockT;
 use std::{iter, net::Ipv4Addr, pin::Pin, sync::Arc, task::Context, time::Duration};
@@ -268,6 +269,7 @@ fn node_config<
 		base_path: Some(BasePath::new(root)),
 		informant_output_format: Default::default(),
 		runtime_cache_size: 2,
+		permission_resolver_factory: Box::new(AlwaysPermissionGrantedFactory {}),
 	}
 }
 

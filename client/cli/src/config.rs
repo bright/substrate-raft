@@ -34,6 +34,7 @@ use sc_service::{
 	BlocksPruning, ChainSpec, TracingReceiver,
 };
 use sc_tracing::logging::LoggerBuilder;
+use sp_authority_permission::{AlwaysPermissionGrantedFactory, PermissionResolverFactory};
 use std::{net::SocketAddr, path::PathBuf};
 
 /// The maximum number of characters for a node name.
@@ -475,6 +476,11 @@ pub trait CliConfiguration<DCV: DefaultConfigurationValues = ()>: Sized {
 		Ok(true)
 	}
 
+	/// Permission resolver factory
+	fn permission_resolver_factory(&self) -> Box<dyn PermissionResolverFactory> {
+		Box::new(AlwaysPermissionGrantedFactory {})
+	}
+
 	/// Create a Configuration object from the current object
 	fn create_configuration<C: SubstrateCli>(
 		&self,
@@ -562,6 +568,7 @@ pub trait CliConfiguration<DCV: DefaultConfigurationValues = ()>: Sized {
 			base_path: Some(base_path),
 			informant_output_format: Default::default(),
 			runtime_cache_size,
+			permission_resolver_factory: self.permission_resolver_factory(),
 		})
 	}
 

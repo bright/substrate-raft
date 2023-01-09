@@ -33,6 +33,7 @@ use sc_service::{
 };
 use sc_transaction_pool::PoolLimit;
 use sc_transaction_pool_api::{TransactionPool as _, TransactionSource, TransactionStatus};
+use sp_authority_permission::AlwaysPermissionGrantedFactory;
 use sp_core::{crypto::Pair, sr25519};
 use sp_keyring::Sr25519Keyring;
 use sp_runtime::{generic::BlockId, OpaqueExtrinsic};
@@ -106,6 +107,7 @@ fn new_node(tokio_handle: Handle) -> node_cli::service::NewFullBase {
 		base_path: Some(base_path),
 		informant_output_format: Default::default(),
 		wasm_runtime_overrides: None,
+		permission_resolver_factory: Box::new(AlwaysPermissionGrantedFactory {}),
 	};
 
 	node_cli::service::new_full_base(config, false, |_, _| ()).expect("Creates node")
