@@ -8,7 +8,7 @@ use sc_finality_grandpa::SharedVoterState;
 use sc_keystore::LocalKeystore;
 use sc_service::{error::Error as ServiceError, Configuration, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryWorker};
-use sp_authority_permission::PermissionResolver;
+use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use std::{sync::Arc, time::Duration};
 
@@ -195,9 +195,6 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 		Vec::default(),
 	));
 
-	let permission_resolver: Arc<dyn PermissionResolver> =
-		sc_service::init_permission_resolver(&config);
-
 	let (network, system_rpc_tx, network_starter) =
 		sc_service::build_network(sc_service::BuildNetworkParams {
 			config: &config,
@@ -208,6 +205,8 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 			block_announce_validator_builder: None,
 			warp_sync: Some(warp_sync),
 		})?;
+
+	let permission_resolver: Arc<dyn PermissionResolver> = Arc::new(AlwaysPermissionGranted {});
 
 	if config.offchain_worker.enabled {
 		sc_service::build_offchain_workers(

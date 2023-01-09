@@ -19,7 +19,6 @@ name = "node-template"
 [dependencies]
 clap = { version = "3.1.18", features = ["derive"] }
 
-sc-authority-permission = { version = "4.0.0-dev", path = "../../../client/authority-permission" }
 sp-authority-permission = { version = "4.0.0-dev", path = "../../../primitives/authority-permission" }
 sc-cli = { version = "0.10.0-dev", path = "../../../client/cli", features = ["wasmtime"] }
 sp-core = { version = "6.0.0", path = "../../../primitives/core" }
