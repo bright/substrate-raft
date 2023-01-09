@@ -520,8 +520,8 @@ pub async fn start_slot_worker<B, C, W, SO, CIDP, CAW, Proof>(
 			continue
 		}
 
-		let has_permission = !permission_resolver.resolve_slot(slot_info.slot).await;
-		if has_permission {
+		let has_permission = permission_resolver.resolve_slot(slot_info.slot).await;
+		if !has_permission {
 			debug!(target: "slots", "Skipping proposal slot due to lack of permission.");
 			continue
 		}

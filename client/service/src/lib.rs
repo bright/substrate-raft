@@ -68,10 +68,6 @@ pub use sc_chain_spec::{
 	ChainSpec, ChainType, Extension as ChainSpecExtension, GenericChainSpec, NoExtension,
 	Properties, RuntimeGenesis,
 };
-
-use sc_authority_permission::{
-	create_remote_authority_provider, PermissionResolverCache, PermissionResolverMetrics,
-};
 pub use sc_consensus::ImportQueue;
 pub use sc_executor::NativeExecutionDispatch;
 #[doc(hidden)]
@@ -82,7 +78,6 @@ pub use sc_rpc::{
 pub use sc_tracing::TracingReceiver;
 pub use sc_transaction_pool::Options as TransactionPoolOptions;
 pub use sc_transaction_pool_api::{error::IntoPoolError, InPoolTransaction, TransactionPool};
-use sp_authority_permission::{AlwaysPermissionGranted, PermissionResolver};
 #[doc(hidden)]
 pub use std::{ops::Deref, result::Result, sync::Arc};
 pub use task_manager::{SpawnTaskHandle, TaskManager, DEFAULT_GROUP_NAME};
@@ -391,27 +386,6 @@ where
 			Ok(Box::new((waiting::HttpServer(Some(http)), waiting::WsServer(Some(ws))))),
 		Err(e) => Err(Error::Application(e)),
 	}
-}
-
-/// Initializes permission resolver
-pub fn init_permission_resolver(config: &Configuration) -> Arc<dyn PermissionResolver> {
-	let mut resolver: Box<dyn PermissionResolver> = if config.remote_authority.is_empty() {
-		Box::new(AlwaysPermissionGranted {})
-	} else {
-		tokio::task::block_in_place(|| {
-			config.tokio_handle.block_on(async {
-				let remote =
-					create_remote_authority_provider(config.remote_authority.clone()).await;
-				Box::new(PermissionResolverCache::new(Box::new(remote)))
-			})
-		})
-	};
-
-	if let Some(registry) = config.prometheus_registry() {
-		resolver = Box::new(PermissionResolverMetrics::new(resolver, registry).unwrap())
-	}
-
-	return Arc::new(PermissionResolverCache::new(resolver))
 }
 
 /// Transaction pool adapter.

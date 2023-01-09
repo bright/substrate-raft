@@ -264,12 +264,6 @@ pub struct RunCmd {
 	/// When `--dev` is given and no explicit `--base-path`, this option is implied.
 	#[clap(long, conflicts_with = "base-path")]
 	pub tmp: bool,
-
-	/// Specify remote authority address
-	///
-	/// Ex: `http://localhost:8080`
-	#[clap(long, value_name = "ADDR")]
-	pub remote_authority: Vec<String>,
 }
 
 impl RunCmd {
@@ -398,10 +392,6 @@ impl CliConfiguration for RunCmd {
 
 	fn disable_grandpa(&self) -> Result<bool> {
 		Ok(self.no_grandpa)
-	}
-
-	fn remote_authority(&self) -> Result<Vec<String>> {
-		Ok(self.remote_authority.clone())
 	}
 
 	fn rpc_ws_max_connections(&self) -> Result<Option<usize>> {
