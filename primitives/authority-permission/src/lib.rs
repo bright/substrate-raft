@@ -24,6 +24,17 @@ pub trait PermissionResolver: Send + Sync {
 	async fn resolve_session(&self, session_index: u32) -> bool;
 }
 
+impl std::fmt::Debug for dyn PermissionResolverFactory {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(f, "PermissionResolverFactory")
+	}
+}
+
+#[async_trait]
+pub trait PermissionResolverFactory {
+	async fn create(&self) -> Box<dyn PermissionResolver>;
+}
+
 pub struct AlwaysPermissionGranted {}
 
 #[async_trait]
@@ -38,5 +49,14 @@ impl PermissionResolver for AlwaysPermissionGranted {
 
 	async fn resolve_session(&self, _: u32) -> bool {
 		true
+	}
+}
+
+pub struct AlwaysPermissionGrantedFactory {}
+
+#[async_trait]
+impl PermissionResolverFactory for AlwaysPermissionGrantedFactory {
+	async fn create(&self) -> Box<dyn PermissionResolver> {
+		Box::new(AlwaysPermissionGranted {})
 	}
 }

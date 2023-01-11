@@ -387,10 +387,7 @@ where
 {
 	let offchain_workers = Some(Arc::new(sc_offchain::OffchainWorkers::new_with_options(
 		client.clone(),
-		sc_offchain::OffchainWorkerOptions {
-			enable_http_requests: false,
-			permission_resolver,
-		},
+		sc_offchain::OffchainWorkerOptions { enable_http_requests: false, permission_resolver },
 	)));
 
 	// Inform the offchain worker about new imported blocks
