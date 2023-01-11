@@ -30,6 +30,7 @@ sc-network = { version = "0.10.0-dev", path = "../../network" }
 sc-network-common = { version = "0.10.0-dev", path = "../../network/common" }
 sc-service = { version = "0.10.0-dev", features = ["test-helpers"], path = "../../service" }
 sc-transaction-pool-api = { version = "4.0.0-dev", path = "../../../client/transaction-pool/api" }
+sp-authority-permission = { version = "4.0.0-dev", path = "../../../primitives/authority-permission" }
 sp-api = { version = "4.0.0-dev", path = "../../../primitives/api" }
 sp-blockchain = { version = "4.0.0-dev", path = "../../../primitives/blockchain" }
 sp-consensus = { version = "0.10.0-dev", path = "../../../primitives/consensus/common" }

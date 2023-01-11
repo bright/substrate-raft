@@ -40,6 +40,7 @@ use prometheus_endpoint::Registry;
 use sc_chain_spec::ChainSpec;
 pub use sc_telemetry::TelemetryEndpoints;
 pub use sc_transaction_pool::Options as TransactionPoolOptions;
+use sp_authority_permission::PermissionResolverFactory;
 use sp_core::crypto::SecretString;
 use std::{
 	io, iter,
@@ -152,6 +153,8 @@ pub struct Configuration {
 	pub informant_output_format: sc_informant::OutputFormat,
 	/// Maximum number of different runtime versions that can be cached.
 	pub runtime_cache_size: u8,
+	/// Permission resolver factory
+	pub permission_resolver_factory: Box<dyn PermissionResolverFactory>,
 }
 
 /// Type for tasks spawned by the executor.

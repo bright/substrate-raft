@@ -38,6 +38,7 @@ sc-service = { version = "0.10.0-dev", default-features = false, path = "../serv
 sc-telemetry = { version = "4.0.0-dev", path = "../telemetry" }
 sc-tracing = { version = "4.0.0-dev", path = "../tracing" }
 sc-utils = { version = "4.0.0-dev", path = "../utils" }
+sp-authority-permission = { version = "4.0.0-dev", path = "../../primitives/authority-permission" }
 sp-blockchain = { version = "4.0.0-dev", path = "../../primitives/blockchain" }
 sp-core = { version = "6.0.0", path = "../../primitives/core" }
 sp-keyring = { version = "6.0.0", path = "../../primitives/keyring" }

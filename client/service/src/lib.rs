@@ -78,6 +78,7 @@ pub use sc_rpc::{
 pub use sc_tracing::TracingReceiver;
 pub use sc_transaction_pool::Options as TransactionPoolOptions;
 pub use sc_transaction_pool_api::{error::IntoPoolError, InPoolTransaction, TransactionPool};
+use sp_authority_permission::PermissionResolver;
 #[doc(hidden)]
 pub use std::{ops::Deref, result::Result, sync::Arc};
 pub use task_manager::{SpawnTaskHandle, TaskManager, DEFAULT_GROUP_NAME};
@@ -386,6 +387,15 @@ where
 			Ok(Box::new((waiting::HttpServer(Some(http)), waiting::WsServer(Some(ws))))),
 		Err(e) => Err(Error::Application(e)),
 	}
+}
+
+/// Initializes permission resolver
+pub fn init_permission_resolver(config: &Configuration) -> Arc<dyn PermissionResolver> {
+	tokio::task::block_in_place(|| {
+		config
+			.tokio_handle
+			.block_on(async { Arc::from(config.permission_resolver_factory.create().await) })
+	})
 }
 
 /// Transaction pool adapter.
