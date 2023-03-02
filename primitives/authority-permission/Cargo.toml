@@ -1,7 +1,7 @@
 [package]
 name = "sp-authority-permission"
 version = "4.0.0-dev"
-authors = ["Parity Technologies <admin@parity.io>"]
+authors = ["Kasper Ziemianek <kasper.ziemianek@gmail.com>", "Michał Graliński <michal.gralinski@brightinventions.pl>"]
 edition = "2021"
 license = "Apache-2.0"
 homepage = "https://substrate.io"
