@@ -33,7 +33,7 @@ use sc_service::{
 };
 use sc_telemetry::TelemetryEndpoints;
 use sp_authority_permission::{
-	AlwaysPermissionGrantedFactory, NeverPermissionGrantedFactory, PermissionResolverFactory,
+	AlwaysPermissionGrantedFactory, PermissionResolverFactory,
 };
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
@@ -267,10 +267,6 @@ pub struct RunCmd {
 	/// When `--dev` is given and no explicit `--base-path`, this option is implied.
 	#[clap(long, conflicts_with = "base-path")]
 	pub tmp: bool,
-
-	/// Which permission resolver to use (default AlwaysPermissionGranted)
-	#[clap(long, arg_enum)]
-	pub permission_resolver: Option<PermissionResolverOption>,
 }
 
 impl RunCmd {
@@ -502,11 +498,7 @@ impl CliConfiguration for RunCmd {
 	}
 
 	fn permission_resolver_factory(&self) -> Box<dyn PermissionResolverFactory> {
-		match self.permission_resolver {
-			Some(PermissionResolverOption::Always) => Box::new(AlwaysPermissionGrantedFactory {}),
-			Some(PermissionResolverOption::Never) => Box::new(NeverPermissionGrantedFactory {}),
-			_ => Box::new(AlwaysPermissionGrantedFactory {}),
-		}
+		Box::new(AlwaysPermissionGrantedFactory {})
 	}
 }
 
@@ -600,12 +592,6 @@ pub enum Cors {
 	All,
 	/// Only hosts on the list are allowed.
 	List(Vec<String>),
-}
-
-#[derive(Clone, Debug, clap::ArgEnum)]
-pub enum PermissionResolverOption {
-	Always,
-	Never,
 }
 
 impl From<Cors> for Option<Vec<String>> {
